@@ -41,4 +41,17 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         uint256 waitingPhases,
         uint256 govRatioMultiplier
     ) external returns (address extension);
+
+    function extensionParams(
+        address extension
+    )
+        external
+        view
+        returns (
+            address tokenAddress,
+            uint256 actionId,
+            address anotherTokenAddress,
+            uint256 waitingPhases,
+            uint256 govRatioMultiplier
+        );
 }
