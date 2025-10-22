@@ -7,6 +7,7 @@ import {ILOVE20Stake} from "@core/src/interfaces/ILOVE20Stake.sol";
 import {ILOVE20Join} from "@core/src/interfaces/ILOVE20Join.sol";
 import {ILOVE20Verify} from "@core/src/interfaces/ILOVE20Verify.sol";
 import {ILOVE20Mint} from "@core/src/interfaces/ILOVE20Mint.sol";
+import {ILOVE20Token} from "@core/src/interfaces/ILOVE20Token.sol";
 
 import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
@@ -39,7 +40,9 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     bool public immutable isTokenAddressTheFirstToken;
 
     uint256 public totalStakedAmount;
-    address[] public stakers;
+    address[] internal _accounts;
+    address[] internal _stakers;
+    address[] internal _unstakers;
     // account => StakeInfo
     mapping(address => StakeInfo) internal _stakeInfo;
 
@@ -49,7 +52,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     // round => totalScore
     mapping(uint256 => uint256) internal _totalScore;
     // round => account[]
-    mapping(uint256 => address[]) internal _accounts;
+    mapping(uint256 => address[]) internal _verifiedAccounts;
     // round => score[]
     mapping(uint256 => uint256[]) internal _scores;
     // round => account => score
@@ -145,11 +148,11 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     }
 
     function accountsCount() external view returns (uint256) {
-        return stakers.length;
+        return _accounts.length;
     }
 
     function accountAtIndex(uint256 index) external view returns (address) {
-        return stakers[index];
+        return _accounts[index];
     }
 
     function rewardByAccount(
@@ -173,43 +176,43 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             address(this)
         );
 
-        uint256 totalScore = _totalScore[round];
+        uint256 total = _totalScore[round];
         uint256 score;
-        if (totalScore > 0) {
+        if (total > 0) {
             // already verified
             score = _scoreByAccount[round][account];
         } else {
             // if verify result is not prepared then calculate reward
-            (totalScore, score) = _calculateScore(account);
+            (total, score) = _calculateScore(account);
         }
-        return ((totalActionReward * score) / totalScore, false);
+        return ((totalActionReward * score) / total, false);
     }
 
     function _calculateScore(
         address account
-    ) internal view returns (uint256 totalScore, uint256 score) {
-        uint256[] memory scores;
-        (totalScore, scores) = _calculateScores();
+    ) internal view returns (uint256 total, uint256 score) {
+        uint256[] memory scoresCalculated;
+        (total, scoresCalculated) = _calculateScores();
         score = 0;
-        for (uint256 i = 0; i < scores.length; i++) {
-            if (stakers[i] == account) {
-                score = scores[i];
+        for (uint256 i = 0; i < scoresCalculated.length; i++) {
+            if (_stakers[i] == account) {
+                score = scoresCalculated[i];
                 break;
             }
         }
-        return (totalScore, score);
+        return (total, score);
     }
 
     function _calculateScores()
         internal
         view
-        returns (uint256 totalScore, uint256[] memory scores)
+        returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
         uint256 totalLp = pair.totalSupply();
         uint256 totalGovVotes = stake.govVotesNum(tokenAddress);
-        scores = new uint256[](stakers.length);
-        for (uint256 i = 0; i < stakers.length; i++) {
-            address account = stakers[i];
+        scoresCalculated = new uint256[](_stakers.length);
+        for (uint256 i = 0; i < _stakers.length; i++) {
+            address account = _stakers[i];
             uint256 lp = _stakeInfo[account].amount;
             uint256 govVotes = stake.validGovVotes(tokenAddress, account);
             uint256 lpRatio = (lp * 1000000) / totalLp;
@@ -218,16 +221,52 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
             uint256 score = lpRatio > govVotesRatio ? govVotesRatio : lpRatio;
 
-            scores[i] = score;
-            totalScore += score;
+            scoresCalculated[i] = score;
+            totalCalculated += score;
         }
-        return (totalScore, scores);
+        return (totalCalculated, scoresCalculated);
     }
 
     function claimReward(uint256 round) external returns (uint256 reward) {
+        // Check if already claimed
+        if (_claimedReward[round][msg.sender] > 0) {
+            revert AlreadyClaimed();
+        }
+
+        // Verify phase must be finished for this round
+        if (round >= verify.currentRound()) {
+            revert RoundNotFinished();
+        }
+
+        // Prepare verify result and reward
         _prepareVerifyResultIfNeeded(round);
         _prepareRewardIfNeeded(round);
-        return 0;
+
+        // Calculate reward for the user
+        uint256 total = _totalScore[round];
+        if (total == 0) {
+            return 0;
+        }
+
+        uint256 score = _scoreByAccount[round][msg.sender];
+        if (score == 0) {
+            return 0;
+        }
+
+        uint256 totalActionReward = _reward[round];
+        reward = (totalActionReward * score) / total;
+
+        // Update claimed reward
+        _claimedReward[round][msg.sender] = reward;
+
+        // Transfer reward to user
+        if (reward > 0) {
+            ILOVE20Token token = ILOVE20Token(tokenAddress);
+            token.transfer(msg.sender, reward);
+        }
+
+        emit ClaimReward(msg.sender, round, reward);
+        return reward;
     }
 
     // ------ user operations ------
@@ -238,9 +277,19 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         if (round > verify.currentRound()) {
             return;
         }
-        (uint256 totalScore, uint256[] memory scores) = _calculateScores();
-        _totalScore[round] = totalScore;
-        _scores[round] = scores;
+        (
+            uint256 totalCalculated,
+            uint256[] memory scoresCalculated
+        ) = _calculateScores();
+        _totalScore[round] = totalCalculated;
+        _scores[round] = scoresCalculated;
+        // Save accounts snapshot and score mapping for this round
+        _verifiedAccounts[round] = _stakers;
+        for (uint256 i = 0; i < _verifiedAccounts[round].length; i++) {
+            _scoreByAccount[round][
+                _verifiedAccounts[round][i]
+            ] = scoresCalculated[i];
+        }
     }
     function _prepareRewardIfNeeded(uint256 round) internal {
         if (_reward[round] > 0) {
@@ -264,9 +313,18 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         if (amount == 0) {
             revert StakeAmountZero();
         }
-        if (info.amount == 0) {
-            stakers.push(msg.sender);
+
+        bool isNewStaker = info.amount == 0;
+        if (isNewStaker) {
+            _stakers.push(msg.sender);
+            _accounts.push(msg.sender);
+            // Add account to Center
+            ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
+                ILOVE20ExtensionFactory(factory).center()
+            );
+            c.addAccount(tokenAddress, actionId, msg.sender);
         }
+
         info.amount += amount;
         totalStakedAmount += amount;
         pair.transferFrom(msg.sender, address(this), amount);
@@ -282,6 +340,11 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         }
         info.requestedUnstakeRound = join.currentRound();
         totalStakedAmount -= info.amount;
+
+        // Move from stakers to unstakers
+        ArrayUtils.remove(_stakers, msg.sender);
+        _unstakers.push(msg.sender);
+
         emit Unstake(msg.sender, info.amount);
     }
 
@@ -296,8 +359,84 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         uint256 amount = info.amount;
         info.amount = 0;
         info.requestedUnstakeRound = 0;
-        ArrayUtils.remove(stakers, msg.sender);
+
+        // Remove from unstakers and accounts (no longer in stakers or unstakers)
+        ArrayUtils.remove(_unstakers, msg.sender);
+        ArrayUtils.remove(_accounts, msg.sender);
+
+        // Remove account from Center
+        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
+            ILOVE20ExtensionFactory(factory).center()
+        );
+        c.removeAccount(tokenAddress, actionId, msg.sender);
+
         pair.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
+    }
+
+    function stakeInfo(
+        address account
+    ) external view returns (uint256 amount, uint256 requestedUnstakeRound) {
+        return (
+            _stakeInfo[account].amount,
+            _stakeInfo[account].requestedUnstakeRound
+        );
+    }
+
+    function stakers() external view returns (address[] memory) {
+        return _stakers;
+    }
+    function stakersCount() external view returns (uint256) {
+        return _stakers.length;
+    }
+    function stakerAtIndex(uint256 index) external view returns (address) {
+        return _stakers[index];
+    }
+
+    function unstakers() external view returns (address[] memory) {
+        return _unstakers;
+    }
+    function unstakersCount() external view returns (uint256) {
+        return _unstakers.length;
+    }
+    function unstakerAtIndex(uint256 index) external view returns (address) {
+        return _unstakers[index];
+    }
+    function totalScore(uint256 round) external view returns (uint256) {
+        return _totalScore[round];
+    }
+    function verifiedAccounts(
+        uint256 round
+    ) external view returns (address[] memory) {
+        return _verifiedAccounts[round];
+    }
+    function verifiedAccountsCount(
+        uint256 round
+    ) external view returns (uint256) {
+        return _verifiedAccounts[round].length;
+    }
+    function verifiedAccountAtIndex(
+        uint256 round,
+        uint256 index
+    ) external view returns (address) {
+        return _verifiedAccounts[round][index];
+    }
+    function scores(uint256 round) external view returns (uint256[] memory) {
+        return _scores[round];
+    }
+    function scoresCount(uint256 round) external view returns (uint256) {
+        return _scores[round].length;
+    }
+    function scoreAtIndex(
+        uint256 round,
+        uint256 index
+    ) external view returns (uint256) {
+        return _scores[round][index];
+    }
+    function scoreByAccount(
+        uint256 round,
+        address account
+    ) external view returns (uint256) {
+        return _scoreByAccount[round][account];
     }
 }

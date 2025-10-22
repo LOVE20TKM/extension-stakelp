@@ -12,6 +12,15 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         uint256 waitingPhases;
         uint256 govRatioMultiplier;
     }
+
+    // ============================================
+    // ERRORS
+    // ============================================
+
+    error InvalidTokenAddress();
+    error InvalidAnotherTokenAddress();
+    error SameTokenAddresses();
+
     // ============================================
     // EVENTS
     // ============================================

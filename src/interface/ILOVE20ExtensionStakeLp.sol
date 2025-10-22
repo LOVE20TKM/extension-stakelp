@@ -11,10 +11,17 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     error StakeAmountZero();
     error UnstakeNotRequested();
     error NotEnoughWaitingPhases();
+    error AlreadyClaimed();
+    error RoundNotFinished();
 
     event Stake(address indexed account, uint256 amount);
     event Unstake(address indexed account, uint256 amount);
     event Withdraw(address indexed account, uint256 amount);
+    event ClaimReward(
+        address indexed account,
+        uint256 indexed round,
+        uint256 reward
+    );
 
     struct StakeInfo {
         uint256 amount;
@@ -28,4 +35,37 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     function stakeLp(uint256 amount) external;
     function unstakeLp() external;
     function withdrawLp() external;
+
+    function stakeInfo(
+        address account
+    ) external view returns (uint256 amount, uint256 requestedUnstakeRound);
+    function stakers() external view returns (address[] memory);
+    function stakersCount() external view returns (uint256);
+    function stakerAtIndex(uint256 index) external view returns (address);
+
+    function unstakers() external view returns (address[] memory);
+    function unstakersCount() external view returns (uint256);
+    function unstakerAtIndex(uint256 index) external view returns (address);
+    function totalStakedAmount() external view returns (uint256);
+    function totalScore(uint256 round) external view returns (uint256);
+    function verifiedAccounts(
+        uint256 round
+    ) external view returns (address[] memory);
+    function verifiedAccountsCount(
+        uint256 round
+    ) external view returns (uint256);
+    function verifiedAccountAtIndex(
+        uint256 round,
+        uint256 index
+    ) external view returns (address);
+    function scores(uint256 round) external view returns (uint256[] memory);
+    function scoresCount(uint256 round) external view returns (uint256);
+    function scoreAtIndex(
+        uint256 round,
+        uint256 index
+    ) external view returns (uint256);
+    function scoreByAccount(
+        uint256 round,
+        address account
+    ) external view returns (uint256);
 }

@@ -51,6 +51,17 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
         uint256 waitingPhases,
         uint256 govRatioMultiplier
     ) external returns (address extension) {
+        // Validate parameters
+        if (tokenAddress == address(0)) {
+            revert InvalidTokenAddress();
+        }
+        if (anotherTokenAddress == address(0)) {
+            revert InvalidAnotherTokenAddress();
+        }
+        if (tokenAddress == anotherTokenAddress) {
+            revert SameTokenAddresses();
+        }
+
         extension = address(
             new LOVE20ExtensionStakeLp(
                 address(this),
