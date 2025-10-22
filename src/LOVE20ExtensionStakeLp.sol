@@ -374,6 +374,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         emit Withdraw(msg.sender, amount);
     }
 
+    // ------ view functions ------
     function stakeInfo(
         address account
     ) external view returns (uint256 amount, uint256 requestedUnstakeRound) {
