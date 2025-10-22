@@ -389,7 +389,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function stakersCount() external view returns (uint256) {
         return _stakers.length;
     }
-    function stakerAtIndex(uint256 index) external view returns (address) {
+    function stakersAtIndex(uint256 index) external view returns (address) {
         return _stakers[index];
     }
 
@@ -399,7 +399,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function unstakersCount() external view returns (uint256) {
         return _unstakers.length;
     }
-    function unstakerAtIndex(uint256 index) external view returns (address) {
+    function unstakersAtIndex(uint256 index) external view returns (address) {
         return _unstakers[index];
     }
     function totalScore(uint256 round) external view returns (uint256) {
@@ -415,7 +415,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     ) external view returns (uint256) {
         return _verifiedAccounts[round].length;
     }
-    function verifiedAccountAtIndex(
+    function verifiedAccountsAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (address) {
@@ -427,7 +427,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function scoresCount(uint256 round) external view returns (uint256) {
         return _scores[round].length;
     }
-    function scoreAtIndex(
+    function scoresAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (uint256) {

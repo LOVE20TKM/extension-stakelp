@@ -41,11 +41,11 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     ) external view returns (uint256 amount, uint256 requestedUnstakeRound);
     function stakers() external view returns (address[] memory);
     function stakersCount() external view returns (uint256);
-    function stakerAtIndex(uint256 index) external view returns (address);
+    function stakersAtIndex(uint256 index) external view returns (address);
 
     function unstakers() external view returns (address[] memory);
     function unstakersCount() external view returns (uint256);
-    function unstakerAtIndex(uint256 index) external view returns (address);
+    function unstakersAtIndex(uint256 index) external view returns (address);
     function totalStakedAmount() external view returns (uint256);
     function totalScore(uint256 round) external view returns (uint256);
     function verifiedAccounts(
@@ -54,13 +54,13 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     function verifiedAccountsCount(
         uint256 round
     ) external view returns (uint256);
-    function verifiedAccountAtIndex(
+    function verifiedAccountsAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (address);
     function scores(uint256 round) external view returns (uint256[] memory);
     function scoresCount(uint256 round) external view returns (uint256);
-    function scoreAtIndex(
+    function scoresAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (uint256);
