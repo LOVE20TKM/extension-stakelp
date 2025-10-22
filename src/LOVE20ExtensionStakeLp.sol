@@ -137,6 +137,9 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         ) * 2;
 
         uint256 totalLp = pair.totalSupply();
+        if (totalLp == 0) {
+            return 0;
+        }
         return (lpAmount * totalTokenAmount) / totalLp;
     }
 
@@ -185,6 +188,10 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             // if verify result is not prepared then calculate reward
             (total, score) = _calculateScore(account);
         }
+
+        if (total == 0) {
+            return (0, false);
+        }
         return ((totalActionReward * score) / total, false);
     }
 
@@ -210,6 +217,12 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     {
         uint256 totalLp = pair.totalSupply();
         uint256 totalGovVotes = stake.govVotesNum(tokenAddress);
+
+        // Return empty if no LP or no gov votes
+        if (totalLp == 0 || totalGovVotes == 0) {
+            return (0, new uint256[](0));
+        }
+
         scoresCalculated = new uint256[](_stakers.length);
         for (uint256 i = 0; i < _stakers.length; i++) {
             address account = _stakers[i];
@@ -255,6 +268,10 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
         uint256 totalActionReward = _reward[round];
         reward = (totalActionReward * score) / total;
+
+        if (reward == 0) {
+            return 0;
+        }
 
         // Update claimed reward
         _claimedReward[round][msg.sender] = reward;
@@ -335,6 +352,9 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         _prepareVerifyResultIfNeeded(verify.currentRound());
 
         StakeInfo storage info = _stakeInfo[msg.sender];
+        if (info.amount == 0) {
+            revert NoStakedAmount();
+        }
         if (info.requestedUnstakeRound != 0) {
             revert UnstakeRequested();
         }

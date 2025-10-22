@@ -9,6 +9,7 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     error AlreadyInitialized();
     error UnstakeRequested();
     error StakeAmountZero();
+    error NoStakedAmount();
     error UnstakeNotRequested();
     error NotEnoughWaitingPhases();
     error AlreadyClaimed();
