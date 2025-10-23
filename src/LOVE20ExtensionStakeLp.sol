@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
+
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
 import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
@@ -153,6 +154,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function accounts() external view returns (address[] memory) {
         return _accounts;
     }
+
     function accountsCount() external view returns (uint256) {
         return _accounts.length;
     }
@@ -311,6 +313,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             ] = scoresCalculated[i];
         }
     }
+
     function _prepareRewardIfNeeded(uint256 round) internal {
         if (_reward[round] > 0) {
             return;
@@ -410,9 +413,11 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function stakers() external view returns (address[] memory) {
         return _stakers;
     }
+
     function stakersCount() external view returns (uint256) {
         return _stakers.length;
     }
+
     function stakersAtIndex(uint256 index) external view returns (address) {
         return _stakers[index];
     }
@@ -420,43 +425,53 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     function unstakers() external view returns (address[] memory) {
         return _unstakers;
     }
+
     function unstakersCount() external view returns (uint256) {
         return _unstakers.length;
     }
+
     function unstakersAtIndex(uint256 index) external view returns (address) {
         return _unstakers[index];
     }
+
     function totalScore(uint256 round) external view returns (uint256) {
         return _totalScore[round];
     }
+
     function verifiedAccounts(
         uint256 round
     ) external view returns (address[] memory) {
         return _verifiedAccounts[round];
     }
+
     function verifiedAccountsCount(
         uint256 round
     ) external view returns (uint256) {
         return _verifiedAccounts[round].length;
     }
+
     function verifiedAccountsAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (address) {
         return _verifiedAccounts[round][index];
     }
+
     function scores(uint256 round) external view returns (uint256[] memory) {
         return _scores[round];
     }
+
     function scoresCount(uint256 round) external view returns (uint256) {
         return _scores[round].length;
     }
+
     function scoresAtIndex(
         uint256 round,
         uint256 index
     ) external view returns (uint256) {
         return _scores[round][index];
     }
+
     function scoreByAccount(
         uint256 round,
         address account
