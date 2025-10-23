@@ -150,6 +150,9 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         return _calculateJoinedValue(info.amount);
     }
 
+    function accounts() external view returns (address[] memory) {
+        return _accounts;
+    }
     function accountsCount() external view returns (uint256) {
         return _accounts.length;
     }
