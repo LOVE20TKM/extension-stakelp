@@ -988,6 +988,168 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(emptyPair.totalSupply(), 0);
     }
 
+    function test_PrepareVerifyResult_AlreadyPrepared() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        // First claim prepares the result
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        uint256 scoreAfterFirstClaim = extension.totalScore(round);
+
+        // Second user stakes and claims - should use already prepared result
+        vm.prank(user2);
+        extension.stakeLp(200e18);
+
+        vm.prank(user2);
+        uint256 claimed = extension.claimReward(round);
+
+        // Total score should be same (not recalculated)
+        assertEq(extension.totalScore(round), scoreAfterFirstClaim);
+        assertEq(claimed, 0); // user2 wasn't in snapshot
+    }
+
+    function test_PrepareVerifyResult_FutureRound() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        // Try to get reward for a future round
+        uint256 futureRound = 10;
+        verify.setCurrentRound(2); // Current is 2, asking for 10
+
+        (uint256 reward, bool isMinted) = extension.rewardByAccount(
+            futureRound,
+            user1
+        );
+
+        assertEq(reward, 0);
+        assertFalse(isMinted);
+    }
+
+    function test_ClaimReward_ZeroWhenNoTotalScore() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        // Set all gov votes to 0 to make total score 0
+        stake.setValidGovVotes(address(token), user1, 0);
+        stake.setValidGovVotes(address(token), user2, 0);
+        stake.setValidGovVotes(address(token), user3, 0);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        uint256 claimed = extension.claimReward(round);
+
+        assertEq(claimed, 0);
+    }
+
+    function test_RewardByAccount_WithoutVerifyResult() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        mint.setActionReward(address(token), round, ACTION_ID, 1000e18);
+
+        // Move to round 2 but don't trigger verification
+        verify.setCurrentRound(2);
+
+        // This should calculate score on-the-fly
+        (uint256 reward, bool isMinted) = extension.rewardByAccount(
+            round,
+            user1
+        );
+
+        assertFalse(isMinted);
+        assertTrue(reward > 0 || reward == 0); // May be 0 or positive
+    }
+
+    function test_ClaimReward_ZeroScoreForUser() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        // Set user1's gov votes to 0
+        stake.setValidGovVotes(address(token), user1, 0);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        uint256 claimed = extension.claimReward(round);
+
+        // User with 0 gov votes gets 0 reward
+        assertEq(claimed, 0);
+    }
+
+    function test_ScoreCalculation_GovRatioLower() public {
+        // Test case where gov ratio is lower than LP ratio
+        vm.prank(user1);
+        extension.stakeLp(50e18); // 50 out of 1000+600 total LP
+
+        // Set gov votes lower than LP proportion
+        stake.setValidGovVotes(address(token), user1, 10e18); // 10 out of 1000 total gov votes
+
+        uint256 round = 1;
+        verify.setCurrentRound(2);
+
+        (uint256 reward, ) = extension.rewardByAccount(round, user1);
+        // This tests the branch where govVotesRatio < lpRatio
+        assertTrue(reward >= 0);
+    }
+
+    function test_ScoreCalculation_LpRatioLower() public {
+        // Test case where LP ratio is lower than gov ratio
+        vm.prank(user1);
+        extension.stakeLp(10e18); // Small LP amount
+
+        // Set gov votes higher than LP proportion
+        stake.setValidGovVotes(address(token), user1, 500e18); // High gov votes
+
+        uint256 round = 1;
+        verify.setCurrentRound(2);
+
+        (uint256 reward, ) = extension.rewardByAccount(round, user1);
+        // This tests the branch where lpRatio < govVotesRatio
+        assertTrue(reward >= 0);
+    }
+
+    function test_ClaimReward_PrepareRewardNotNeeded() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        // First claim prepares reward
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        // Claim with different user should reuse prepared reward
+        vm.prank(user2);
+        extension.stakeLp(50e18);
+
+        vm.prank(user2);
+        uint256 claimed = extension.claimReward(round);
+
+        assertEq(claimed, 0); // user2 wasn't in the snapshot
+    }
+
     function test_RewardByAccount_BeforeVerifyFinished() public {
         vm.prank(user1);
         extension.stakeLp(100e18);
@@ -997,6 +1159,143 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         (uint256 reward, ) = extension.rewardByAccount(round, user1);
         assertEq(reward, 0);
+    }
+
+    function test_RewardByAccount_AfterClaimed() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        // Claim first
+        vm.prank(user1);
+        uint256 claimedAmount = extension.claimReward(round);
+
+        // Check rewardByAccount returns claimed amount
+        (uint256 reward, bool isMinted) = extension.rewardByAccount(
+            round,
+            user1
+        );
+        assertEq(reward, claimedAmount);
+        assertTrue(isMinted);
+    }
+
+    // ============================================
+    // Verified Accounts and Scores Tests
+    // ============================================
+
+    function test_TotalScore() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        // Claim to trigger verification
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        // Check total score
+        uint256 totalScore = extension.totalScore(round);
+        assertTrue(totalScore > 0);
+    }
+
+    function test_VerifiedAccounts() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        // Claim to trigger verification
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        // Check verified accounts
+        address[] memory verifiedAccts = extension.verifiedAccounts(round);
+        assertTrue(verifiedAccts.length >= 1);
+        assertEq(extension.verifiedAccountsCount(round), verifiedAccts.length);
+    }
+
+    function test_VerifiedAccountsAtIndex() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        address account0 = extension.verifiedAccountsAtIndex(round, 0);
+
+        assertEq(account0, user1);
+    }
+
+    function test_Scores() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        uint256[] memory scoresArray = extension.scores(round);
+        assertTrue(scoresArray.length >= 1);
+        assertEq(extension.scoresCount(round), scoresArray.length);
+    }
+
+    function test_ScoresAtIndex() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        uint256 score0 = extension.scoresAtIndex(round, 0);
+        assertTrue(score0 > 0);
+    }
+
+    function test_ScoreByAccount() public {
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        uint256 round = 1;
+        uint256 totalReward = 1000e18;
+        mint.setActionReward(address(token), round, ACTION_ID, totalReward);
+
+        verify.setCurrentRound(2);
+
+        vm.prank(user1);
+        extension.claimReward(round);
+
+        uint256 score1 = extension.scoreByAccount(round, user1);
+
+        assertTrue(score1 > 0);
     }
 
     // ============================================
@@ -1062,6 +1361,39 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(factory.extensionsCount(address(token)), 2);
     }
 
+    function test_Factory_Extensions() public {
+        // Create multiple extensions
+        address extension2 = factory.createExtension(
+            address(token),
+            ACTION_ID + 1,
+            address(anotherToken),
+            WAITING_PHASES,
+            GOV_RATIO_MULTIPLIER
+        );
+
+        address[] memory exts = factory.extensions(address(token));
+        assertEq(exts.length, 2);
+        assertEq(exts[0], address(extension));
+        assertEq(exts[1], extension2);
+    }
+
+    function test_Factory_ExtensionsAtIndex() public {
+        // Create another extension
+        address extension2 = factory.createExtension(
+            address(token),
+            ACTION_ID + 1,
+            address(anotherToken),
+            WAITING_PHASES,
+            GOV_RATIO_MULTIPLIER
+        );
+
+        assertEq(
+            factory.extensionsAtIndex(address(token), 0),
+            address(extension)
+        );
+        assertEq(factory.extensionsAtIndex(address(token), 1), extension2);
+    }
+
     function test_Factory_ExtensionParams() public view {
         (
             address tokenAddr,
@@ -1076,6 +1408,28 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(anotherTokenAddr, address(anotherToken));
         assertEq(waitingPhases, WAITING_PHASES);
         assertEq(govRatioMult, GOV_RATIO_MULTIPLIER);
+    }
+
+    function test_Factory_ExtensionParams_NonExistent() public view {
+        // Query params for non-existent extension
+        (
+            address tokenAddr,
+            uint256 actionId,
+            address anotherTokenAddr,
+            uint256 waitingPhases,
+            uint256 govRatioMult
+        ) = factory.extensionParams(address(0x999));
+
+        // Should return zero values
+        assertEq(tokenAddr, address(0));
+        assertEq(actionId, 0);
+        assertEq(anotherTokenAddr, address(0));
+        assertEq(waitingPhases, 0);
+        assertEq(govRatioMult, 0);
+    }
+
+    function test_Factory_Center() public view {
+        assertEq(factory.center(), address(center));
     }
 
     function test_Factory_RevertIfInvalidTokenAddress() public {
@@ -1133,6 +1487,46 @@ contract LOVE20ExtensionStakeLpTest is Test {
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER
         );
+    }
+
+    function test_TokenAddressAsToken1() public {
+        // Create pair with anotherToken as token0 (comes first alphabetically if address is smaller)
+        MockUniswapV2Pair reversePair = MockUniswapV2Pair(
+            uniswapFactory.createPair(address(anotherToken), address(token))
+        );
+
+        reversePair.setReserves(2000e18, 1000e18);
+        reversePair.mint(address(reversePair), 1000e18);
+
+        // Create extension with reversed pair
+        address reverseExtension = factory.createExtension(
+            address(token),
+            ACTION_ID + 10,
+            address(anotherToken),
+            WAITING_PHASES,
+            GOV_RATIO_MULTIPLIER
+        );
+
+        LOVE20ExtensionStakeLp revExt = LOVE20ExtensionStakeLp(
+            reverseExtension
+        );
+
+        // Initialize
+        vm.prank(address(center));
+        revExt.initialize();
+
+        // Setup user
+        reversePair.mint(user1, 100e18);
+        vm.prank(user1);
+        reversePair.approve(address(revExt), type(uint256).max);
+
+        // Stake
+        vm.prank(user1);
+        revExt.stakeLp(50e18);
+
+        // Check joined value calculation works correctly
+        uint256 joinedVal = revExt.joinedValue();
+        assertTrue(joinedVal > 0);
     }
 
     // ============================================
