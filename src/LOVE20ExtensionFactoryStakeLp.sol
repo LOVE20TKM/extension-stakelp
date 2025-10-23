@@ -24,6 +24,12 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
     // ILOVE20ExtensionFactory INTERFACE
     // ============================================
 
+    function extensions(
+        address tokenAddress
+    ) external view override returns (address[] memory) {
+        return _extensions[tokenAddress];
+    }
+
     function extensionsCount(
         address tokenAddress
     ) external view override returns (uint256) {
