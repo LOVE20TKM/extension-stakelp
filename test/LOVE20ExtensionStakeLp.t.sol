@@ -779,6 +779,266 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     // ============================================
+    // TotalUnstakedAmount Tests
+    // ============================================
+
+    function test_TotalUnstakedAmount_InitiallyZero() public view {
+        assertEq(extension.totalUnstakedAmount(), 0);
+    }
+
+    function test_TotalUnstakedAmount_AfterUnstake() public {
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+
+        vm.prank(user1);
+        extension.unstakeLp();
+
+        assertEq(extension.totalUnstakedAmount(), 50e18);
+        assertEq(extension.totalStakedAmount(), 0);
+    }
+
+    function test_TotalUnstakedAmount_MultipleUnstakes() public {
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+
+        vm.prank(user2);
+        extension.stakeLp(100e18);
+
+        vm.prank(user3);
+        extension.stakeLp(150e18);
+
+        // User1 unstakes
+        vm.prank(user1);
+        extension.unstakeLp();
+        assertEq(extension.totalUnstakedAmount(), 50e18);
+        assertEq(extension.totalStakedAmount(), 250e18);
+
+        // User2 unstakes
+        vm.prank(user2);
+        extension.unstakeLp();
+        assertEq(extension.totalUnstakedAmount(), 150e18);
+        assertEq(extension.totalStakedAmount(), 150e18);
+
+        // User3 unstakes
+        vm.prank(user3);
+        extension.unstakeLp();
+        assertEq(extension.totalUnstakedAmount(), 300e18);
+        assertEq(extension.totalStakedAmount(), 0);
+    }
+
+    function test_TotalUnstakedAmount_AfterWithdraw() public {
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+
+        vm.prank(user1);
+        extension.unstakeLp();
+
+        assertEq(extension.totalUnstakedAmount(), 50e18);
+
+        // Wait enough rounds
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+
+        assertEq(extension.totalUnstakedAmount(), 0);
+        assertEq(extension.totalStakedAmount(), 0);
+    }
+
+    function test_TotalUnstakedAmount_PartialWithdraw() public {
+        // User1 and User2 stake
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+
+        vm.prank(user2);
+        extension.stakeLp(100e18);
+
+        // Both unstake
+        vm.prank(user1);
+        extension.unstakeLp();
+
+        vm.prank(user2);
+        extension.unstakeLp();
+
+        assertEq(extension.totalUnstakedAmount(), 150e18);
+        assertEq(extension.totalStakedAmount(), 0);
+
+        // Only User1 withdraws
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+
+        assertEq(extension.totalUnstakedAmount(), 100e18);
+        assertEq(extension.totalStakedAmount(), 0);
+
+        // User2 withdraws
+        vm.prank(user2);
+        extension.withdrawLp();
+
+        assertEq(extension.totalUnstakedAmount(), 0);
+        assertEq(extension.totalStakedAmount(), 0);
+    }
+
+    function test_TotalUnstakedAmount_StakeUnstakeWithdrawCycle() public {
+        // First cycle
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+        assertEq(extension.totalStakedAmount(), 50e18);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        vm.prank(user1);
+        extension.unstakeLp();
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 50e18);
+
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        // Second cycle - user can stake again
+        vm.prank(user1);
+        extension.stakeLp(30e18);
+        assertEq(extension.totalStakedAmount(), 30e18);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        vm.prank(user1);
+        extension.unstakeLp();
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 30e18);
+    }
+
+    function test_TotalUnstakedAmount_ComplexScenario() public {
+        // User1, User2, User3 stake
+        vm.prank(user1);
+        extension.stakeLp(100e18);
+
+        vm.prank(user2);
+        extension.stakeLp(200e18);
+
+        vm.prank(user3);
+        extension.stakeLp(300e18);
+
+        assertEq(extension.totalStakedAmount(), 600e18);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        // User1 unstakes
+        vm.prank(user1);
+        extension.unstakeLp();
+        assertEq(extension.totalStakedAmount(), 500e18);
+        assertEq(extension.totalUnstakedAmount(), 100e18);
+
+        // User2 unstakes
+        vm.prank(user2);
+        extension.unstakeLp();
+        assertEq(extension.totalStakedAmount(), 300e18);
+        assertEq(extension.totalUnstakedAmount(), 300e18);
+
+        // Wait and User1 withdraws
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+        assertEq(extension.totalStakedAmount(), 300e18);
+        assertEq(extension.totalUnstakedAmount(), 200e18);
+
+        // User2 withdraws (same unstake round as User1, so can withdraw now)
+        vm.prank(user2);
+        extension.withdrawLp();
+        assertEq(extension.totalStakedAmount(), 300e18);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        // User3 unstakes
+        vm.prank(user3);
+        extension.unstakeLp();
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 300e18);
+
+        // Wait for User3 to be able to withdraw
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        // User3 withdraws
+        vm.prank(user3);
+        extension.withdrawLp();
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 0);
+    }
+
+    function testFuzz_TotalUnstakedAmount(uint256 amount) public {
+        amount = bound(amount, 1e18, 100e18);
+
+        vm.prank(user1);
+        extension.stakeLp(amount);
+
+        vm.prank(user1);
+        extension.unstakeLp();
+
+        assertEq(extension.totalUnstakedAmount(), amount);
+        assertEq(extension.totalStakedAmount(), 0);
+
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+
+        assertEq(extension.totalUnstakedAmount(), 0);
+    }
+
+    function testFuzz_TotalUnstakedAmount_MultipleUsers(
+        uint256 amount1,
+        uint256 amount2,
+        uint256 amount3
+    ) public {
+        amount1 = bound(amount1, 1e18, 50e18);
+        amount2 = bound(amount2, 1e18, 80e18);
+        amount3 = bound(amount3, 1e18, 100e18);
+
+        vm.prank(user1);
+        extension.stakeLp(amount1);
+
+        vm.prank(user2);
+        extension.stakeLp(amount2);
+
+        vm.prank(user3);
+        extension.stakeLp(amount3);
+
+        uint256 totalStaked = amount1 + amount2 + amount3;
+        assertEq(extension.totalStakedAmount(), totalStaked);
+        assertEq(extension.totalUnstakedAmount(), 0);
+
+        // All unstake
+        vm.prank(user1);
+        extension.unstakeLp();
+
+        vm.prank(user2);
+        extension.unstakeLp();
+
+        vm.prank(user3);
+        extension.unstakeLp();
+
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), totalStaked);
+
+        // All withdraw
+        join.setCurrentRound(join.currentRound() + WAITING_PHASES + 1);
+
+        vm.prank(user1);
+        extension.withdrawLp();
+
+        vm.prank(user2);
+        extension.withdrawLp();
+
+        vm.prank(user3);
+        extension.withdrawLp();
+
+        assertEq(extension.totalStakedAmount(), 0);
+        assertEq(extension.totalUnstakedAmount(), 0);
+    }
+
+    // ============================================
     // Score Calculation Tests
     // ============================================
 

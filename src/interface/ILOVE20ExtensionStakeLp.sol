@@ -50,6 +50,7 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     function unstakersCount() external view returns (uint256);
     function unstakersAtIndex(uint256 index) external view returns (address);
     function totalStakedAmount() external view returns (uint256);
+    function totalUnstakedAmount() external view returns (uint256);
     function totalScore(uint256 round) external view returns (uint256);
     function verifiedAccounts(
         uint256 round

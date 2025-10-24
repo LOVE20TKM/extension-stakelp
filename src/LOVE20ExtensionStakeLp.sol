@@ -41,6 +41,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     bool public immutable isTokenAddressTheFirstToken;
 
     uint256 public totalStakedAmount;
+    uint256 public totalUnstakedAmount;
     address[] internal _accounts;
     address[] internal _stakers;
     address[] internal _unstakers;
@@ -366,6 +367,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         }
         info.requestedUnstakeRound = join.currentRound();
         totalStakedAmount -= info.amount;
+        totalUnstakedAmount += info.amount;
 
         // Move from stakers to unstakers
         ArrayUtils.remove(_stakers, msg.sender);
@@ -385,6 +387,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         uint256 amount = info.amount;
         info.amount = 0;
         info.requestedUnstakeRound = 0;
+        totalUnstakedAmount -= amount;
 
         // Remove from unstakers and accounts (no longer in stakers or unstakers)
         ArrayUtils.remove(_unstakers, msg.sender);
