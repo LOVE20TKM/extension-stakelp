@@ -1,0 +1,13 @@
+# Account Configuration Example
+# Copy this file to each network directory as .account
+# Example: cp .account.example anvil/.account
+
+# Keystore account name (as saved in Foundry)
+export KEYSTORE_ACCOUNT="your-keystore-account-name"
+
+# Account address (without 0x prefix or with it)
+export ACCOUNT_ADDRESS="0xYourAccountAddress"
+
+# Optional: Etherscan API key for contract verification
+# export ETHERSCAN_API_KEY="your-etherscan-api-key"
+
