@@ -55,7 +55,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
         uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
-        uint256 govRatioMultiplier
+        uint256 govRatioMultiplier,
+        uint256 minGovVotes
     ) external returns (address extension) {
         // Validate parameters
         if (tokenAddress == address(0)) {
@@ -75,7 +76,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
                 actionId,
                 anotherTokenAddress,
                 waitingPhases,
-                govRatioMultiplier
+                govRatioMultiplier,
+                minGovVotes
             )
         );
         _extensionParams[extension] = ExtensionParams({
@@ -83,7 +85,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             actionId: actionId,
             anotherTokenAddress: anotherTokenAddress,
             waitingPhases: waitingPhases,
-            govRatioMultiplier: govRatioMultiplier
+            govRatioMultiplier: govRatioMultiplier,
+            minGovVotes: minGovVotes
         });
         _extensions[tokenAddress].push(extension);
         _isExtension[extension] = true;
@@ -93,7 +96,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             actionId,
             anotherTokenAddress,
             waitingPhases,
-            govRatioMultiplier
+            govRatioMultiplier,
+            minGovVotes
         );
         return extension;
     }
@@ -108,7 +112,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             uint256 actionId,
             address anotherTokenAddress,
             uint256 waitingPhases,
-            uint256 govRatioMultiplier
+            uint256 govRatioMultiplier,
+            uint256 minGovVotes
         )
     {
         ExtensionParams memory params = _extensionParams[extension];
@@ -117,7 +122,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             params.actionId,
             params.anotherTokenAddress,
             params.waitingPhases,
-            params.govRatioMultiplier
+            params.govRatioMultiplier,
+            params.minGovVotes
         );
     }
 }

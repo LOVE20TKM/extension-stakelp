@@ -14,6 +14,7 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     error NotEnoughWaitingPhases();
     error AlreadyClaimed();
     error RoundNotFinished();
+    error InsufficientGovVotes();
 
     event Stake(address indexed account, uint256 amount);
     event Unstake(address indexed account, uint256 amount);
@@ -32,6 +33,7 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     function anotherTokenAddress() external view returns (address);
     function waitingPhases() external view returns (uint256);
     function govRatioMultiplier() external view returns (uint256);
+    function minGovVotes() external view returns (uint256);
     function lpTokenAddress() external view returns (address);
     function isTokenAddressTheFirstToken() external view returns (bool);
 

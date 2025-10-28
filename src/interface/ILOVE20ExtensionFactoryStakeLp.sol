@@ -11,6 +11,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         address anotherTokenAddress;
         uint256 waitingPhases;
         uint256 govRatioMultiplier;
+        uint256 minGovVotes;
     }
 
     // ============================================
@@ -31,7 +32,8 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
-        uint256 govRatioMultiplier
+        uint256 govRatioMultiplier,
+        uint256 minGovVotes
     );
 
     function createExtension(
@@ -39,7 +41,8 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
-        uint256 govRatioMultiplier
+        uint256 govRatioMultiplier,
+        uint256 minGovVotes
     ) external returns (address extension);
 
     function extensionParams(
@@ -52,6 +55,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
             uint256 actionId,
             address anotherTokenAddress,
             uint256 waitingPhases,
-            uint256 govRatioMultiplier
+            uint256 govRatioMultiplier,
+            uint256 minGovVotes
         );
 }

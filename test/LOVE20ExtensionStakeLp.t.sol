@@ -42,6 +42,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     uint256 constant ACTION_ID = 1;
     uint256 constant WAITING_PHASES = 3;
     uint256 constant GOV_RATIO_MULTIPLIER = 1;
+    uint256 constant MIN_GOV_VOTES = 100e18;
 
     function setUp() public {
         // Deploy mock contracts
@@ -80,7 +81,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
                 ACTION_ID,
                 address(anotherToken),
                 WAITING_PHASES,
-                GOV_RATIO_MULTIPLIER
+                GOV_RATIO_MULTIPLIER,
+                MIN_GOV_VOTES
             )
         );
 
@@ -133,7 +135,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
 
         vm.prank(user1);
@@ -232,6 +235,31 @@ contract LOVE20ExtensionStakeLpTest is Test {
         vm.prank(user1);
         vm.expectRevert(ILOVE20ExtensionStakeLp.UnstakeRequested.selector);
         extension.stakeLp(10e18);
+    }
+
+    function test_StakeLp_RevertIfInsufficientGovVotes() public {
+        // Create a new user with insufficient gov votes
+        address user4 = address(0x4);
+        pair.mint(user4, 100e18);
+        vm.prank(user4);
+        pair.approve(address(extension), type(uint256).max);
+
+        // Set gov votes below MIN_GOV_VOTES (MIN_GOV_VOTES = 100e18)
+        stake.setValidGovVotes(address(token), user4, 50e18);
+
+        // Expect revert when first time staking with insufficient gov votes
+        vm.prank(user4);
+        vm.expectRevert(ILOVE20ExtensionStakeLp.InsufficientGovVotes.selector);
+        extension.stakeLp(50e18);
+    }
+
+    function test_StakeLp_SuccessWithMinimumGovVotes() public {
+        // user1 has exactly MIN_GOV_VOTES (100e18)
+        vm.prank(user1);
+        extension.stakeLp(50e18);
+
+        (uint256 amount, ) = extension.stakeInfo(user1);
+        assertEq(amount, 50e18);
     }
 
     function test_JoinedValue() public {
@@ -1225,7 +1253,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
 
         assertTrue(factory.exists(newExtension));
@@ -1239,7 +1268,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
 
         address[] memory exts = factory.extensions(address(token));
@@ -1255,7 +1285,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
 
         assertEq(
@@ -1271,7 +1302,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             uint256 actionId,
             address anotherTokenAddr,
             uint256 waitingPhases,
-            uint256 govRatioMult
+            uint256 govRatioMult,
+            uint256 minGovVotesVal
         ) = factory.extensionParams(address(extension));
 
         assertEq(tokenAddr, address(token));
@@ -1279,6 +1311,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(anotherTokenAddr, address(anotherToken));
         assertEq(waitingPhases, WAITING_PHASES);
         assertEq(govRatioMult, GOV_RATIO_MULTIPLIER);
+        assertEq(minGovVotesVal, MIN_GOV_VOTES);
     }
 
     function test_Factory_ExtensionParams_NonExistent() public view {
@@ -1288,7 +1321,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             uint256 actionId,
             address anotherTokenAddr,
             uint256 waitingPhases,
-            uint256 govRatioMult
+            uint256 govRatioMult,
+            uint256 minGovVotesVal
         ) = factory.extensionParams(address(0x999));
 
         // Should return zero values
@@ -1297,6 +1331,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(anotherTokenAddr, address(0));
         assertEq(waitingPhases, 0);
         assertEq(govRatioMult, 0);
+        assertEq(minGovVotesVal, 0);
     }
 
     function test_Factory_Center() public view {
@@ -1312,7 +1347,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
     }
 
@@ -1325,7 +1361,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID,
             address(0),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
     }
 
@@ -1338,7 +1375,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID,
             address(token),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
     }
 
@@ -1356,7 +1394,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID,
             address(newAnotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
     }
 
@@ -1375,7 +1414,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID + 10,
             address(anotherToken),
             WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
         );
 
         LOVE20ExtensionStakeLp revExt = LOVE20ExtensionStakeLp(

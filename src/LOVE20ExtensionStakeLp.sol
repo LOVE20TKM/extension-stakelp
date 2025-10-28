@@ -30,6 +30,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     address public immutable anotherTokenAddress;
     uint256 public immutable waitingPhases;
     uint256 public immutable govRatioMultiplier;
+    uint256 public immutable minGovVotes;
     address public immutable lpTokenAddress;
 
     bool public initialized;
@@ -68,7 +69,8 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         uint256 actionId_,
         address anotherTokenAddress_,
         uint256 waitingPhases_,
-        uint256 govRatioMultiplier_
+        uint256 govRatioMultiplier_,
+        uint256 minGovVotes_
     ) {
         factory = factory_;
         tokenAddress = tokenAddress_;
@@ -76,6 +78,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         anotherTokenAddress = anotherTokenAddress_;
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
+        minGovVotes = minGovVotes_;
 
         ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
             ILOVE20ExtensionFactory(factory_).center()
@@ -345,6 +348,15 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
         bool isNewStaker = info.amount == 0;
         if (isNewStaker) {
+            // Check if msg.sender has sufficient governance votes on first stake
+            uint256 userGovVotes = stake.validGovVotes(
+                tokenAddress,
+                msg.sender
+            );
+            if (userGovVotes < minGovVotes) {
+                revert InsufficientGovVotes();
+            }
+
             _stakers.push(msg.sender);
             _accounts.push(msg.sender);
             // Add account to Center
