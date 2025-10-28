@@ -200,7 +200,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             score = _scoreByAccount[round][account];
         } else {
             // if verify result is not prepared then calculate reward
-            (total, score) = _calculateScore(account);
+            (total, score) = calculateScore(account);
         }
 
         if (total == 0) {
@@ -209,11 +209,11 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         return ((totalActionReward * score) / total, false);
     }
 
-    function _calculateScore(
+    function calculateScore(
         address account
-    ) internal view returns (uint256 total, uint256 score) {
+    ) public view returns (uint256 total, uint256 score) {
         uint256[] memory scoresCalculated;
-        (total, scoresCalculated) = _calculateScores();
+        (total, scoresCalculated) = calculateScores();
         score = 0;
         for (uint256 i = 0; i < scoresCalculated.length; i++) {
             if (_stakers[i] == account) {
@@ -224,8 +224,8 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         return (total, score);
     }
 
-    function _calculateScores()
-        internal
+    function calculateScores()
+        public
         view
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
@@ -311,7 +311,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         (
             uint256 totalCalculated,
             uint256[] memory scoresCalculated
-        ) = _calculateScores();
+        ) = calculateScores();
         _totalScore[round] = totalCalculated;
         _scores[round] = scoresCalculated;
         // Save accounts snapshot and score mapping for this round

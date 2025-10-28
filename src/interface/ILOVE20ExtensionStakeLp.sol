@@ -64,6 +64,14 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
         uint256 round,
         uint256 index
     ) external view returns (address);
+
+    function calculateScores()
+        external
+        view
+        returns (uint256 total, uint256[] memory scores);
+    function calculateScore(
+        address account
+    ) external view returns (uint256 total, uint256 score);
     function scores(uint256 round) external view returns (uint256[] memory);
     function scoresCount(uint256 round) external view returns (uint256);
     function scoresAtIndex(
