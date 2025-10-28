@@ -14,7 +14,7 @@ import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2
 import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
-uint256 constant DEFAULT_JOIN_AMOUNT = 1;
+uint256 constant DEFAULT_JOIN_AMOUNT = 1000000000000000000; // 1 token
 
 /**
  * @title LOVE20ExtensionStakeLp
@@ -114,6 +114,11 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         ILOVE20ExtensionFactory f = ILOVE20ExtensionFactory(factory);
         ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(f.center());
         ILOVE20Join j = ILOVE20Join(c.joinAddress());
+
+        // Approve token to joinAddress before joining
+        ILOVE20Token token = ILOVE20Token(tokenAddress);
+        token.approve(address(j), DEFAULT_JOIN_AMOUNT);
+
         j.join(tokenAddress, actionId, DEFAULT_JOIN_AMOUNT, new string[](0));
     }
 
