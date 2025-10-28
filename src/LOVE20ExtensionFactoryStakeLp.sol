@@ -2,50 +2,25 @@
 pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionFactoryStakeLp} from "./interface/ILOVE20ExtensionFactoryStakeLp.sol";
+import {LOVE20ExtensionFactoryBase} from "@extension/src/LOVE20ExtensionFactoryBase.sol";
 import {LOVE20ExtensionStakeLp} from "./LOVE20ExtensionStakeLp.sol";
 
-contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
-    address public immutable center;
-
-    // tokenAddress => extension[]
-    mapping(address => address[]) private _extensions;
-
-    // extension => bool
-    mapping(address => bool) private _isExtension;
+contract LOVE20ExtensionFactoryStakeLp is
+    LOVE20ExtensionFactoryBase,
+    ILOVE20ExtensionFactoryStakeLp
+{
+    // ============================================
+    // STATE VARIABLES
+    // ============================================
 
     // extension => ExtensionParams
     mapping(address => ExtensionParams) internal _extensionParams;
 
-    constructor(address _center) {
-        center = _center;
-    }
-
     // ============================================
-    // ILOVE20ExtensionFactory INTERFACE
+    // CONSTRUCTOR
     // ============================================
 
-    function extensions(
-        address tokenAddress
-    ) external view override returns (address[] memory) {
-        return _extensions[tokenAddress];
-    }
-
-    function extensionsCount(
-        address tokenAddress
-    ) external view override returns (uint256) {
-        return _extensions[tokenAddress].length;
-    }
-
-    function extensionsAtIndex(
-        address tokenAddress,
-        uint256 index
-    ) external view override returns (address) {
-        return _extensions[tokenAddress][index];
-    }
-
-    function exists(address extension) external view override returns (bool) {
-        return _isExtension[extension];
-    }
+    constructor(address _center) LOVE20ExtensionFactoryBase(_center) {}
 
     // ============================================
     // StakeLp FACTORY FUNCTIONS
@@ -78,6 +53,8 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
                 minGovVotes
             )
         );
+
+        // Store extension parameters
         _extensionParams[extension] = ExtensionParams({
             tokenAddress: tokenAddress,
             actionId: actionId,
@@ -86,8 +63,10 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             govRatioMultiplier: govRatioMultiplier,
             minGovVotes: minGovVotes
         });
-        _extensions[tokenAddress].push(extension);
-        _isExtension[extension] = true;
+
+        // Register extension in base contract
+        _registerExtension(tokenAddress, extension);
+
         emit ExtensionCreated(
             extension,
             tokenAddress,
@@ -97,6 +76,7 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
             govRatioMultiplier,
             minGovVotes
         );
+
         return extension;
     }
 

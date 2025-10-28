@@ -2,6 +2,7 @@
 pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
+import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
 import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
 import {ILOVE20Stake} from "@core/src/interfaces/ILOVE20Stake.sol";
@@ -19,21 +20,24 @@ uint256 constant DEFAULT_JOIN_AMOUNT = 1000000000000000000; // 1 token
 /**
  * @title LOVE20ExtensionStakeLp
  * @notice LP staking extension for LOVE20 protocol with phase-based unlocking and reward distribution
- * @dev Implements ILOVE20Extension interface and integrates with LOVE20 system
+ * @dev Extends LOVE20ExtensionBase and implements ILOVE20ExtensionStakeLp interface
  */
-contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
+contract LOVE20ExtensionStakeLp is
+    LOVE20ExtensionBase,
+    ILOVE20ExtensionStakeLp
+{
     using ArrayUtils for address[];
 
-    address public immutable factory;
-    address public tokenAddress;
-    uint256 public actionId;
+    // ============================================
+    // STATE VARIABLES
+    // ============================================
+
     address public immutable anotherTokenAddress;
     uint256 public immutable waitingPhases;
     uint256 public immutable govRatioMultiplier;
     uint256 public immutable minGovVotes;
     address public lpTokenAddress;
 
-    bool public initialized;
     ILOVE20Stake public immutable stake;
     ILOVE20Join public immutable join;
     ILOVE20Verify public immutable verify;
@@ -43,7 +47,6 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
     uint256 public totalStakedAmount;
     uint256 public totalUnstakedAmount;
-    address[] internal _accounts;
     address[] internal _stakers;
     address[] internal _unstakers;
     // account => StakeInfo
@@ -63,14 +66,17 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     // round => account => claimedReward
     mapping(uint256 => mapping(address => uint256)) internal _claimedReward;
 
+    // ============================================
+    // CONSTRUCTOR
+    // ============================================
+
     constructor(
         address factory_,
         address anotherTokenAddress_,
         uint256 waitingPhases_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
-    ) {
-        factory = factory_;
+    ) LOVE20ExtensionBase(factory_) {
         anotherTokenAddress = anotherTokenAddress_;
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
@@ -86,30 +92,13 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         mint = ILOVE20Mint(c.mintAddress());
     }
 
-    modifier onlyCenter() {
-        if (msg.sender != ILOVE20ExtensionFactory(factory).center()) {
-            revert OnlyCenterCanCall();
-        }
-        _;
-    }
+    // ============================================
+    // INITIALIZATION
+    // ============================================
 
-    function initialize(
-        address tokenAddress_,
-        uint256 actionId_
-    ) external onlyCenter {
-        if (initialized) {
-            revert AlreadyInitialized();
-        }
-        if (tokenAddress_ == address(0)) {
-            revert InvalidTokenAddress();
-        }
-        // Note: actionId can be any value including 0, no validation needed
-        initialized = true;
-
-        // Set tokenAddress and actionId
-        tokenAddress = tokenAddress_;
-        actionId = actionId_;
-
+    /// @dev Hook called after base initialization
+    /// Sets up LP token pair and joins the action
+    function _afterInitialize() internal override {
         // Initialize LP token pair
         ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
             ILOVE20ExtensionFactory(factory).center()
@@ -118,27 +107,26 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             c.uniswapV2FactoryAddress()
         );
         lpTokenAddress = uniswapV2Factory.getPair(
-            tokenAddress_,
+            tokenAddress,
             anotherTokenAddress
         );
         if (lpTokenAddress == address(0)) {
             revert UniswapV2PairNotCreated();
         }
         pair = IUniswapV2Pair(lpTokenAddress);
-        isTokenAddressTheFirstToken = pair.token0() == tokenAddress_;
+        isTokenAddressTheFirstToken = pair.token0() == tokenAddress;
 
         // Approve token to joinAddress before joining
-        ILOVE20Token token = ILOVE20Token(tokenAddress_);
+        ILOVE20Token token = ILOVE20Token(tokenAddress);
         token.approve(address(join), DEFAULT_JOIN_AMOUNT);
 
         // Join the action
         join.join(tokenAddress, actionId, DEFAULT_JOIN_AMOUNT, new string[](0));
     }
 
-    // ILOVE20Extension interface
-    function center() external view returns (address) {
-        return ILOVE20ExtensionFactory(factory).center();
-    }
+    // ============================================
+    // ILOVE20EXTENSION INTERFACE IMPLEMENTATION
+    // ============================================
 
     function isJoinedValueCalculated() external pure returns (bool) {
         return true;
@@ -170,17 +158,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         return _calculateJoinedValue(info.amount);
     }
 
-    function accounts() external view returns (address[] memory) {
-        return _accounts;
-    }
-
-    function accountsCount() external view returns (uint256) {
-        return _accounts.length;
-    }
-
-    function accountAtIndex(uint256 index) external view returns (address) {
-        return _accounts[index];
-    }
+    // accounts(), accountsCount(), accountAtIndex() are inherited from LOVE20ExtensionBase
 
     function rewardByAccount(
         uint256 round,
@@ -368,7 +346,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
             }
 
             _stakers.push(msg.sender);
-            _accounts.push(msg.sender);
+            _addAccount(msg.sender); // Use base class method
             // Add account to Center
             ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
                 ILOVE20ExtensionFactory(factory).center()
@@ -418,7 +396,7 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
         // Remove from unstakers and accounts (no longer in stakers or unstakers)
         ArrayUtils.remove(_unstakers, msg.sender);
-        ArrayUtils.remove(_accounts, msg.sender);
+        _removeAccount(msg.sender); // Use base class method
 
         // Remove account from Center
         ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(

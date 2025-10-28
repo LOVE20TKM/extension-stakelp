@@ -4,10 +4,11 @@ pragma solidity =0.8.17;
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 
 interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
+    // Common errors (OnlyCenterCanCall, AlreadyInitialized, InvalidTokenAddress)
+    // are defined in LOVE20ExtensionBase
+
+    // StakeLp-specific errors
     error UniswapV2PairNotCreated();
-    error OnlyCenterCanCall();
-    error AlreadyInitialized();
-    error InvalidTokenAddress();
     error UnstakeRequested();
     error StakeAmountZero();
     error NoStakedAmount();

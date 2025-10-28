@@ -6,6 +6,7 @@ import {LOVE20ExtensionStakeLp} from "../src/LOVE20ExtensionStakeLp.sol";
 import {LOVE20ExtensionFactoryStakeLp} from "../src/LOVE20ExtensionFactoryStakeLp.sol";
 import {ILOVE20ExtensionStakeLp} from "../src/interface/ILOVE20ExtensionStakeLp.sol";
 import {ILOVE20ExtensionFactoryStakeLp} from "../src/interface/ILOVE20ExtensionFactoryStakeLp.sol";
+import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
 
@@ -123,7 +124,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.prank(address(center));
-        vm.expectRevert(ILOVE20ExtensionStakeLp.AlreadyInitialized.selector);
+        vm.expectRevert(ILOVE20Extension.AlreadyInitialized.selector);
         extension.initialize(address(token), ACTION_ID);
     }
 
@@ -138,7 +139,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         );
 
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.OnlyCenterCanCall.selector);
+        vm.expectRevert(ILOVE20Extension.OnlyCenterCanCall.selector);
         newExtension.initialize(address(token), ACTION_ID + 1);
     }
 
@@ -153,7 +154,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         );
 
         vm.prank(address(center));
-        vm.expectRevert(ILOVE20ExtensionStakeLp.InvalidTokenAddress.selector);
+        vm.expectRevert(ILOVE20Extension.InvalidTokenAddress.selector);
         newExtension.initialize(address(0), ACTION_ID + 1);
     }
 
