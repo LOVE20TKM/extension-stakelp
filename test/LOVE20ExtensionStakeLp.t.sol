@@ -40,9 +40,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
     address public user3 = address(0x3);
 
     uint256 constant ACTION_ID = 1;
-    uint256 constant WAITING_PHASES = 3;
-    uint256 constant GOV_RATIO_MULTIPLIER = 1;
-    uint256 constant MIN_GOV_VOTES = 100e18;
+    uint256 constant WAITING_PHASES = 7;
+    uint256 constant GOV_RATIO_MULTIPLIER = 2;
+    uint256 constant MIN_GOV_VOTES = 1e18;
 
     function setUp() public {
         // Deploy mock contracts
@@ -244,8 +244,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
         vm.prank(user4);
         pair.approve(address(extension), type(uint256).max);
 
-        // Set gov votes below MIN_GOV_VOTES (MIN_GOV_VOTES = 100e18)
-        stake.setValidGovVotes(address(token), user4, 50e18);
+        // Set gov votes below MIN_GOV_VOTES (MIN_GOV_VOTES = 1e18)
+        stake.setValidGovVotes(address(token), user4, 0.5e18);
 
         // Expect revert when first time staking with insufficient gov votes
         vm.prank(user4);
@@ -254,7 +254,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_StakeLp_SuccessWithMinimumGovVotes() public {
-        // user1 has exactly MIN_GOV_VOTES (100e18)
+        // user1 has 100e18, well above MIN_GOV_VOTES (1e18)
         vm.prank(user1);
         extension.stakeLp(50e18);
 
@@ -685,11 +685,11 @@ contract LOVE20ExtensionStakeLpTest is Test {
         vm.prank(user1);
         extension.stakeLp(100e18);
 
-        // Total LP: 1000e18, User LP: 100e18
-        // LP ratio: (100e18 * 1000000) / 1000e18 = 100000
+        // Total LP: 1600e18 (1000e18 in pair + 600e18 users), User LP: 100e18
+        // LP ratio: (100e18 * 1000000) / 1600e18 = 62500
         // Total gov votes: 1000e18, User gov votes: 100e18
-        // Gov ratio: (100e18 * 1000000 * 1) / 1000e18 = 100000
-        // Score: min(100000, 100000) = 100000
+        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
+        // Score: min(62500, 200000) = 62500
 
         verify.setCurrentRound(2);
         uint256 round = 1;
@@ -711,21 +711,21 @@ contract LOVE20ExtensionStakeLpTest is Test {
         vm.prank(user3);
         extension.stakeLp(300e18);
 
-        // Total LP in pair: 1000e18
+        // Total LP: 1600e18 (1000e18 in pair + 600e18 users)
         // Total staked: 600e18
         // Total gov votes: 1000e18
 
-        // User1 LP ratio: (100 * 1000000) / 1000 = 100000
-        // User1 Gov ratio: (100 * 1000000 * 1) / 1000 = 100000
-        // User1 score: 100000
+        // User1 LP ratio: (100 * 1000000) / 1600 = 62500
+        // User1 Gov ratio: (100 * 1000000 * 2) / 1000 = 200000
+        // User1 score: min(62500, 200000) = 62500
 
-        // User2 LP ratio: (200 * 1000000) / 1000 = 200000
-        // User2 Gov ratio: (200 * 1000000 * 1) / 1000 = 200000
-        // User2 score: 200000
+        // User2 LP ratio: (200 * 1000000) / 1600 = 125000
+        // User2 Gov ratio: (200 * 1000000 * 2) / 1000 = 400000
+        // User2 score: min(125000, 400000) = 125000
 
-        // User3 LP ratio: (300 * 1000000) / 1000 = 300000
-        // User3 Gov ratio: (300 * 1000000 * 1) / 1000 = 300000
-        // User3 score: 300000
+        // User3 LP ratio: (300 * 1000000) / 1600 = 187500
+        // User3 Gov ratio: (300 * 1000000 * 2) / 1000 = 600000
+        // User3 score: min(187500, 600000) = 187500
 
         assertEq(extension.stakersCount(), 3);
     }
@@ -753,8 +753,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // User LP: 100e18
         // LP ratio: (100e18 * 1000000) / 1600e18 = 62500
         // Total gov votes: 1000e18, User gov votes: 100e18
-        // Gov ratio: (100e18 * 1000000 * 1) / 1000e18 = 100000
-        // Score: min(62500, 100000) = 62500
+        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
+        // Score: min(62500, 200000) = 62500
         assertEq(scores[0], 62500, "Score should be 62500");
         assertEq(totalScore, 62500, "Total score should be 62500");
     }
@@ -807,7 +807,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // Total LP: 1600e18, User LP: 100e18
         // LP ratio: (100e18 * 1000000) / 1600e18 = 62500
         // User1 has 100e18 gov votes out of 1000e18 total
-        // Gov ratio: (100e18 * 1000000 * 1) / 1000e18 = 100000
+        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
         // Score should be limited by LP ratio (min) = 62500
         // This is actually LP-limited, not gov-limited with current setup
 
@@ -827,7 +827,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // Total LP: 1600e18, User LP: 50e18
         // LP ratio: (50e18 * 1000000) / 1600e18 = 31250
         // User1 has 100e18 gov votes (10% of 1000e18 total)
-        // Gov ratio: (100e18 * 1000000 * 1) / 1000e18 = 100000
+        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
         // Score should be limited by LP ratio (min) = 31250
 
         (, uint256[] memory scores) = extension.calculateScores();
