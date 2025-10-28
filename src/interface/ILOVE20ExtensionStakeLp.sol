@@ -7,6 +7,7 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     error UniswapV2PairNotCreated();
     error OnlyCenterCanCall();
     error AlreadyInitialized();
+    error InvalidTokenAddress();
     error UnstakeRequested();
     error StakeAmountZero();
     error NoStakedAmount();

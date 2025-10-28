@@ -25,21 +25,21 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
     using ArrayUtils for address[];
 
     address public immutable factory;
-    address public immutable tokenAddress;
-    uint256 public immutable actionId;
+    address public tokenAddress;
+    uint256 public actionId;
     address public immutable anotherTokenAddress;
     uint256 public immutable waitingPhases;
     uint256 public immutable govRatioMultiplier;
     uint256 public immutable minGovVotes;
-    address public immutable lpTokenAddress;
+    address public lpTokenAddress;
 
     bool public initialized;
     ILOVE20Stake public immutable stake;
     ILOVE20Join public immutable join;
     ILOVE20Verify public immutable verify;
     ILOVE20Mint public immutable mint;
-    IUniswapV2Pair public immutable pair;
-    bool public immutable isTokenAddressTheFirstToken;
+    IUniswapV2Pair public pair;
+    bool public isTokenAddressTheFirstToken;
 
     uint256 public totalStakedAmount;
     uint256 public totalUnstakedAmount;
@@ -65,21 +65,18 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
 
     constructor(
         address factory_,
-        address tokenAddress_,
-        uint256 actionId_,
         address anotherTokenAddress_,
         uint256 waitingPhases_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
     ) {
         factory = factory_;
-        tokenAddress = tokenAddress_;
-        actionId = actionId_;
         anotherTokenAddress = anotherTokenAddress_;
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
         minGovVotes = minGovVotes_;
 
+        // Initialize immutable protocol contracts
         ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
             ILOVE20ExtensionFactory(factory_).center()
         );
@@ -87,18 +84,6 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         join = ILOVE20Join(c.joinAddress());
         verify = ILOVE20Verify(c.verifyAddress());
         mint = ILOVE20Mint(c.mintAddress());
-        IUniswapV2Factory uniswapV2Factory = IUniswapV2Factory(
-            c.uniswapV2FactoryAddress()
-        );
-        lpTokenAddress = uniswapV2Factory.getPair(
-            tokenAddress_,
-            anotherTokenAddress_
-        );
-        if (lpTokenAddress == address(0)) {
-            revert UniswapV2PairNotCreated();
-        }
-        pair = IUniswapV2Pair(lpTokenAddress);
-        isTokenAddressTheFirstToken = pair.token0() == tokenAddress_;
     }
 
     modifier onlyCenter() {
@@ -108,21 +93,46 @@ contract LOVE20ExtensionStakeLp is ILOVE20ExtensionStakeLp {
         _;
     }
 
-    function initialize() external onlyCenter {
+    function initialize(
+        address tokenAddress_,
+        uint256 actionId_
+    ) external onlyCenter {
         if (initialized) {
             revert AlreadyInitialized();
         }
+        if (tokenAddress_ == address(0)) {
+            revert InvalidTokenAddress();
+        }
+        // Note: actionId can be any value including 0, no validation needed
         initialized = true;
 
-        ILOVE20ExtensionFactory f = ILOVE20ExtensionFactory(factory);
-        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(f.center());
-        ILOVE20Join j = ILOVE20Join(c.joinAddress());
+        // Set tokenAddress and actionId
+        tokenAddress = tokenAddress_;
+        actionId = actionId_;
+
+        // Initialize LP token pair
+        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
+            ILOVE20ExtensionFactory(factory).center()
+        );
+        IUniswapV2Factory uniswapV2Factory = IUniswapV2Factory(
+            c.uniswapV2FactoryAddress()
+        );
+        lpTokenAddress = uniswapV2Factory.getPair(
+            tokenAddress_,
+            anotherTokenAddress
+        );
+        if (lpTokenAddress == address(0)) {
+            revert UniswapV2PairNotCreated();
+        }
+        pair = IUniswapV2Pair(lpTokenAddress);
+        isTokenAddressTheFirstToken = pair.token0() == tokenAddress_;
 
         // Approve token to joinAddress before joining
-        ILOVE20Token token = ILOVE20Token(tokenAddress);
-        token.approve(address(j), DEFAULT_JOIN_AMOUNT);
+        ILOVE20Token token = ILOVE20Token(tokenAddress_);
+        token.approve(address(join), DEFAULT_JOIN_AMOUNT);
 
-        j.join(tokenAddress, actionId, DEFAULT_JOIN_AMOUNT, new string[](0));
+        // Join the action
+        join.join(tokenAddress, actionId, DEFAULT_JOIN_AMOUNT, new string[](0));
     }
 
     // ILOVE20Extension interface

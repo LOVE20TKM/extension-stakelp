@@ -72,8 +72,6 @@ contract LOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactoryStakeLp {
         extension = address(
             new LOVE20ExtensionStakeLp(
                 address(this),
-                tokenAddress,
-                actionId,
                 anotherTokenAddress,
                 waitingPhases,
                 govRatioMultiplier,

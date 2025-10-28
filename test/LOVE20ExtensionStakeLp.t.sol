@@ -88,7 +88,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         // Initialize extension
         vm.prank(address(center));
-        extension.initialize();
+        extension.initialize(address(token), ACTION_ID);
 
         // Setup users with LP tokens
         pair.mint(user1, 100e18);
@@ -124,15 +124,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_Initialize_RevertIfAlreadyInitialized() public {
         vm.prank(address(center));
         vm.expectRevert(ILOVE20ExtensionStakeLp.AlreadyInitialized.selector);
-        extension.initialize();
+        extension.initialize(address(token), ACTION_ID);
     }
 
     function test_Initialize_RevertIfNotCenter() public {
         // Deploy new extension without initialization
         LOVE20ExtensionStakeLp newExtension = new LOVE20ExtensionStakeLp(
             address(factory),
-            address(token),
-            ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
@@ -141,7 +139,22 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(ILOVE20ExtensionStakeLp.OnlyCenterCanCall.selector);
-        newExtension.initialize();
+        newExtension.initialize(address(token), ACTION_ID + 1);
+    }
+
+    function test_Initialize_RevertIfInvalidTokenAddress() public {
+        // Deploy new extension without initialization
+        LOVE20ExtensionStakeLp newExtension = new LOVE20ExtensionStakeLp(
+            address(factory),
+            address(anotherToken),
+            WAITING_PHASES,
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES
+        );
+
+        vm.prank(address(center));
+        vm.expectRevert(ILOVE20ExtensionStakeLp.InvalidTokenAddress.selector);
+        newExtension.initialize(address(0), ACTION_ID + 1);
     }
 
     // ============================================
@@ -1565,23 +1578,25 @@ contract LOVE20ExtensionStakeLpTest is Test {
         );
     }
 
-    function test_Constructor_RevertIfPairNotCreated() public {
+    function test_Initialize_RevertIfPairNotCreated() public {
         MockERC20 newToken = new MockERC20();
         MockERC20 newAnotherToken = new MockERC20();
 
-        // Don't create pair
-        vm.expectRevert(
-            ILOVE20ExtensionStakeLp.UniswapV2PairNotCreated.selector
-        );
-        new LOVE20ExtensionStakeLp(
+        // Create extension but don't create pair
+        LOVE20ExtensionStakeLp newExtension = new LOVE20ExtensionStakeLp(
             address(factory),
-            address(newToken),
-            ACTION_ID,
             address(newAnotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
+
+        // Initialize should revert because pair doesn't exist
+        vm.prank(address(center));
+        vm.expectRevert(
+            ILOVE20ExtensionStakeLp.UniswapV2PairNotCreated.selector
+        );
+        newExtension.initialize(address(newToken), ACTION_ID + 100);
     }
 
     function test_TokenAddressAsToken1() public {
@@ -1609,7 +1624,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         // Initialize
         vm.prank(address(center));
-        revExt.initialize();
+        revExt.initialize(address(token), ACTION_ID + 10);
 
         // Setup user
         reversePair.mint(user1, 100e18);

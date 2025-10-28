@@ -107,7 +107,11 @@ contract MockExtensionCenter is ILOVE20ExtensionCenter {
         return false;
     }
 
-    function initializeExtension(address) external {}
+    function initializeExtension(
+        address,
+        address,
+        uint256
+    ) external {}
 
     function extension(address, uint256) external pure returns (address) {
         return address(0);
