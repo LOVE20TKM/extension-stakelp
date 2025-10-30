@@ -37,7 +37,6 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     function govRatioMultiplier() external view returns (uint256);
     function minGovVotes() external view returns (uint256);
     function lpTokenAddress() external view returns (address);
-    function isTokenAddressTheFirstToken() external view returns (bool);
 
     function stakeLp(uint256 amount) external;
     function unstakeLp() external;

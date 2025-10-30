@@ -3,16 +3,10 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
-import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
-import {ILOVE20Stake} from "@core/src/interfaces/ILOVE20Stake.sol";
-import {ILOVE20Join} from "@core/src/interfaces/ILOVE20Join.sol";
-import {ILOVE20Verify} from "@core/src/interfaces/ILOVE20Verify.sol";
-import {ILOVE20Mint} from "@core/src/interfaces/ILOVE20Mint.sol";
-import {ILOVE20Token} from "@core/src/interfaces/ILOVE20Token.sol";
-
 import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
+import {ILOVE20Token} from "@core/src/interfaces/ILOVE20Token.sol";
 import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
 /**
@@ -36,12 +30,8 @@ contract LOVE20ExtensionStakeLp is
     uint256 public immutable minGovVotes;
     address public lpTokenAddress;
 
-    ILOVE20Stake public immutable stake;
-    ILOVE20Join public immutable join;
-    ILOVE20Verify public immutable verify;
-    ILOVE20Mint public immutable mint;
-    IUniswapV2Pair public pair;
-    bool public isTokenAddressTheFirstToken;
+    IUniswapV2Pair internal _pair;
+    bool internal _isTokenAddressTheFirstToken;
 
     uint256 public totalStakedAmount;
     uint256 public totalUnstakedAmount;
@@ -79,15 +69,6 @@ contract LOVE20ExtensionStakeLp is
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
         minGovVotes = minGovVotes_;
-
-        // Initialize immutable protocol contracts
-        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
-            ILOVE20ExtensionFactory(factory_).center()
-        );
-        stake = ILOVE20Stake(c.stakeAddress());
-        join = ILOVE20Join(c.joinAddress());
-        verify = ILOVE20Verify(c.verifyAddress());
-        mint = ILOVE20Mint(c.mintAddress());
     }
 
     // ============================================
@@ -97,7 +78,7 @@ contract LOVE20ExtensionStakeLp is
     /// @dev Hook called after base initialization
     /// Sets up LP token pair and joins the action
     function _afterInitialize() internal override {
-        // Initialize LP token pair
+        // Initialize LP token pair after tokenAddress is set
         IUniswapV2Factory uniswapV2Factory = IUniswapV2Factory(
             ILOVE20ExtensionCenter(center()).uniswapV2FactoryAddress()
         );
@@ -108,8 +89,8 @@ contract LOVE20ExtensionStakeLp is
         if (lpTokenAddress == address(0)) {
             revert UniswapV2PairNotCreated();
         }
-        pair = IUniswapV2Pair(lpTokenAddress);
-        isTokenAddressTheFirstToken = pair.token0() == tokenAddress;
+        _pair = IUniswapV2Pair(lpTokenAddress);
+        _isTokenAddressTheFirstToken = _pair.token0() == tokenAddress;
     }
 
     // ============================================
@@ -127,12 +108,12 @@ contract LOVE20ExtensionStakeLp is
     function _calculateJoinedValue(
         uint256 lpAmount
     ) internal view returns (uint256) {
-        (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
+        (uint256 reserve0, uint256 reserve1, ) = _pair.getReserves();
         uint256 totalTokenAmount = (
-            isTokenAddressTheFirstToken ? reserve0 : reserve1
+            _isTokenAddressTheFirstToken ? reserve0 : reserve1
         ) * 2;
 
-        uint256 totalLp = pair.totalSupply();
+        uint256 totalLp = _pair.totalSupply();
         if (totalLp == 0) {
             return 0;
         }
@@ -158,11 +139,11 @@ contract LOVE20ExtensionStakeLp is
         }
 
         // don't know the reward if verify phase is not finished
-        if (round >= verify.currentRound()) {
+        if (round >= _verify.currentRound()) {
             return (0, false);
         }
 
-        (uint256 totalActionReward, ) = mint.actionRewardByActionIdByAccount(
+        (uint256 totalActionReward, ) = _mint.actionRewardByActionIdByAccount(
             tokenAddress,
             round,
             actionId,
@@ -205,8 +186,8 @@ contract LOVE20ExtensionStakeLp is
         view
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
-        uint256 totalLp = pair.totalSupply();
-        uint256 totalGovVotes = stake.govVotesNum(tokenAddress);
+        uint256 totalLp = _pair.totalSupply();
+        uint256 totalGovVotes = _stake.govVotesNum(tokenAddress);
 
         // Return empty if no LP or no gov votes
         if (totalLp == 0 || totalGovVotes == 0) {
@@ -217,7 +198,7 @@ contract LOVE20ExtensionStakeLp is
         for (uint256 i = 0; i < _stakers.length; i++) {
             address account = _stakers[i];
             uint256 lp = _stakeInfo[account].amount;
-            uint256 govVotes = stake.validGovVotes(tokenAddress, account);
+            uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
             uint256 lpRatio = (lp * 1000000) / totalLp;
             uint256 govVotesRatio = (govVotes * 1000000 * govRatioMultiplier) /
                 totalGovVotes;
@@ -237,7 +218,7 @@ contract LOVE20ExtensionStakeLp is
         }
 
         // Verify phase must be finished for this round
-        if (round >= verify.currentRound()) {
+        if (round >= _verify.currentRound()) {
             revert RoundNotFinished();
         }
 
@@ -281,7 +262,7 @@ contract LOVE20ExtensionStakeLp is
         if (_totalScore[round] > 0) {
             return;
         }
-        if (round > verify.currentRound()) {
+        if (round > _verify.currentRound()) {
             return;
         }
         (
@@ -303,7 +284,7 @@ contract LOVE20ExtensionStakeLp is
         if (_reward[round] > 0) {
             return;
         }
-        uint256 totalActionReward = mint.mintActionReward(
+        uint256 totalActionReward = _mint.mintActionReward(
             tokenAddress,
             round,
             actionId
@@ -312,7 +293,7 @@ contract LOVE20ExtensionStakeLp is
     }
 
     function stakeLp(uint256 amount) external {
-        _prepareVerifyResultIfNeeded(verify.currentRound());
+        _prepareVerifyResultIfNeeded(_verify.currentRound());
 
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.requestedUnstakeRound != 0) {
@@ -325,7 +306,7 @@ contract LOVE20ExtensionStakeLp is
         bool isNewStaker = info.amount == 0;
         if (isNewStaker) {
             // Check if msg.sender has sufficient governance votes on first stake
-            uint256 userGovVotes = stake.validGovVotes(
+            uint256 userGovVotes = _stake.validGovVotes(
                 tokenAddress,
                 msg.sender
             );
@@ -339,12 +320,12 @@ contract LOVE20ExtensionStakeLp is
 
         info.amount += amount;
         totalStakedAmount += amount;
-        pair.transferFrom(msg.sender, address(this), amount);
+        _pair.transferFrom(msg.sender, address(this), amount);
         emit Stake(msg.sender, amount);
     }
 
     function unstakeLp() external {
-        _prepareVerifyResultIfNeeded(verify.currentRound());
+        _prepareVerifyResultIfNeeded(_verify.currentRound());
 
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.amount == 0) {
@@ -353,7 +334,7 @@ contract LOVE20ExtensionStakeLp is
         if (info.requestedUnstakeRound != 0) {
             revert UnstakeRequested();
         }
-        info.requestedUnstakeRound = join.currentRound();
+        info.requestedUnstakeRound = _join.currentRound();
         totalStakedAmount -= info.amount;
         totalUnstakedAmount += info.amount;
 
@@ -369,7 +350,9 @@ contract LOVE20ExtensionStakeLp is
         if (info.requestedUnstakeRound == 0) {
             revert UnstakeNotRequested();
         }
-        if (join.currentRound() - info.requestedUnstakeRound <= waitingPhases) {
+        if (
+            _join.currentRound() - info.requestedUnstakeRound <= waitingPhases
+        ) {
             revert NotEnoughWaitingPhases();
         }
         uint256 amount = info.amount;
@@ -381,7 +364,7 @@ contract LOVE20ExtensionStakeLp is
         ArrayUtils.remove(_unstakers, msg.sender);
         _removeAccount(msg.sender);
 
-        pair.transfer(msg.sender, amount);
+        _pair.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
     }
 
