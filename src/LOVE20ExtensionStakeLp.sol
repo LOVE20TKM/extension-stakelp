@@ -98,11 +98,8 @@ contract LOVE20ExtensionStakeLp is
     /// Sets up LP token pair and joins the action
     function _afterInitialize() internal override {
         // Initialize LP token pair
-        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
-            ILOVE20ExtensionFactory(factory).center()
-        );
         IUniswapV2Factory uniswapV2Factory = IUniswapV2Factory(
-            c.uniswapV2FactoryAddress()
+            ILOVE20ExtensionCenter(center()).uniswapV2FactoryAddress()
         );
         lpTokenAddress = uniswapV2Factory.getPair(
             tokenAddress,
@@ -337,12 +334,7 @@ contract LOVE20ExtensionStakeLp is
             }
 
             _stakers.push(msg.sender);
-            _addAccount(msg.sender); // Use base class method
-            // Add account to Center
-            ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
-                ILOVE20ExtensionFactory(factory).center()
-            );
-            c.addAccount(tokenAddress, actionId, msg.sender);
+            _addAccount(msg.sender);
         }
 
         info.amount += amount;
@@ -387,13 +379,7 @@ contract LOVE20ExtensionStakeLp is
 
         // Remove from unstakers and accounts (no longer in stakers or unstakers)
         ArrayUtils.remove(_unstakers, msg.sender);
-        _removeAccount(msg.sender); // Use base class method
-
-        // Remove account from Center
-        ILOVE20ExtensionCenter c = ILOVE20ExtensionCenter(
-            ILOVE20ExtensionFactory(factory).center()
-        );
-        c.removeAccount(tokenAddress, actionId, msg.sender);
+        _removeAccount(msg.sender);
 
         pair.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
