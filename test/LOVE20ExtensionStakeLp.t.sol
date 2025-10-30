@@ -9,6 +9,7 @@ import {ILOVE20ExtensionFactoryStakeLp} from "../src/interface/ILOVE20ExtensionF
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
+import {LOVE20ExtensionCenter} from "@extension/src/LOVE20ExtensionCenter.sol";
 
 // Import mock contracts
 import {MockERC20} from "./mocks/MockERC20.sol";
@@ -18,7 +19,10 @@ import {MockStake} from "./mocks/MockStake.sol";
 import {MockJoin} from "./mocks/MockJoin.sol";
 import {MockVerify} from "./mocks/MockVerify.sol";
 import {MockMint} from "./mocks/MockMint.sol";
-import {MockExtensionCenter} from "./mocks/MockExtensionCenter.sol";
+import {MockSubmit} from "./mocks/MockSubmit.sol";
+import {MockLaunch} from "./mocks/MockLaunch.sol";
+import {MockVote} from "./mocks/MockVote.sol";
+import {MockRandom} from "./mocks/MockRandom.sol";
 
 /**
  * @title LOVE20ExtensionStakeLp Test Suite
@@ -26,7 +30,7 @@ import {MockExtensionCenter} from "./mocks/MockExtensionCenter.sol";
 contract LOVE20ExtensionStakeLpTest is Test {
     LOVE20ExtensionFactoryStakeLp public factory;
     LOVE20ExtensionStakeLp public extension;
-    MockExtensionCenter public center;
+    LOVE20ExtensionCenter public center;
     MockERC20 public token;
     MockERC20 public anotherToken;
     MockUniswapV2Pair public pair;
@@ -35,6 +39,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
     MockJoin public join;
     MockVerify public verify;
     MockMint public mint;
+    MockSubmit public submit;
+    MockLaunch public launch;
+    MockVote public vote;
+    MockRandom public random;
 
     address public user1 = address(0x1);
     address public user2 = address(0x2);
@@ -47,7 +55,6 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function setUp() public {
         // Deploy mock contracts
-        center = new MockExtensionCenter();
         token = new MockERC20();
         anotherToken = new MockERC20();
         uniswapFactory = new MockUniswapV2Factory();
@@ -55,13 +62,23 @@ contract LOVE20ExtensionStakeLpTest is Test {
         join = new MockJoin();
         verify = new MockVerify();
         mint = new MockMint();
+        submit = new MockSubmit();
+        launch = new MockLaunch();
+        vote = new MockVote();
+        random = new MockRandom();
 
-        // Setup center
-        center.setStakeAddress(address(stake));
-        center.setJoinAddress(address(join));
-        center.setVerifyAddress(address(verify));
-        center.setMintAddress(address(mint));
-        center.setUniswapV2FactoryAddress(address(uniswapFactory));
+        // Deploy real LOVE20ExtensionCenter
+        center = new LOVE20ExtensionCenter(
+            address(uniswapFactory),
+            address(launch),
+            address(stake),
+            address(submit),
+            address(vote),
+            address(join),
+            address(verify),
+            address(mint),
+            address(random)
+        );
 
         // Create LP pair
         pair = MockUniswapV2Pair(
@@ -78,8 +95,6 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // Create extension
         extension = LOVE20ExtensionStakeLp(
             factory.createExtension(
-                address(token),
-                ACTION_ID,
                 address(anotherToken),
                 WAITING_PHASES,
                 GOV_RATIO_MULTIPLIER,
@@ -87,9 +102,19 @@ contract LOVE20ExtensionStakeLpTest is Test {
             )
         );
 
-        // Initialize extension
-        vm.prank(address(center));
-        extension.initialize(address(token), ACTION_ID);
+        // Register factory to center (needs canSubmit permission)
+        submit.setCanSubmit(address(token), address(this), true);
+        center.addFactory(address(token), address(factory));
+
+        // Set action info whiteListAddress to extension address
+        submit.setActionInfo(address(token), ACTION_ID, address(extension));
+
+        // Initialize extension through center
+        center.initializeExtension(
+            address(extension),
+            address(token),
+            ACTION_ID
+        );
 
         // Setup users with LP tokens
         pair.mint(user1, 100e18);
@@ -123,9 +148,12 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_Initialize_RevertIfAlreadyInitialized() public {
-        vm.prank(address(center));
-        vm.expectRevert(ILOVE20Extension.AlreadyInitialized.selector);
-        extension.initialize(address(token), ACTION_ID);
+        vm.expectRevert(ILOVE20ExtensionCenter.ExtensionAlreadyExists.selector);
+        center.initializeExtension(
+            address(extension),
+            address(token),
+            ACTION_ID
+        );
     }
 
     function test_Initialize_RevertIfNotCenter() public {
@@ -153,6 +181,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
             MIN_GOV_VOTES
         );
 
+        // Note: This test cannot use center.initializeExtension because center checks
+        // factory registration first, and zero address checks happen later in initialize.
+        // Instead, we test the direct initialize call which is protected by onlyCenter modifier.
         vm.prank(address(center));
         vm.expectRevert(ILOVE20Extension.InvalidTokenAddress.selector);
         newExtension.initialize(address(0), ACTION_ID + 1);
@@ -1448,8 +1479,6 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_Factory_CreateExtension() public {
         address newExtension = factory.createExtension(
-            address(token),
-            ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
@@ -1457,21 +1486,19 @@ contract LOVE20ExtensionStakeLpTest is Test {
         );
 
         assertTrue(factory.exists(newExtension));
-        assertEq(factory.extensionsCount(address(token)), 2);
+        assertEq(factory.extensionsCount(), 2);
     }
 
     function test_Factory_Extensions() public {
         // Create multiple extensions
         address extension2 = factory.createExtension(
-            address(token),
-            ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
 
-        address[] memory exts = factory.extensions(address(token));
+        address[] memory exts = factory.extensions();
         assertEq(exts.length, 2);
         assertEq(exts[0], address(extension));
         assertEq(exts[1], extension2);
@@ -1480,44 +1507,46 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_Factory_ExtensionsAtIndex() public {
         // Create another extension
         address extension2 = factory.createExtension(
-            address(token),
-            ACTION_ID + 1,
             address(anotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
 
-        assertEq(
-            factory.extensionsAtIndex(address(token), 0),
-            address(extension)
-        );
-        assertEq(factory.extensionsAtIndex(address(token), 1), extension2);
+        assertEq(factory.extensionsAtIndex(0), address(extension));
+        assertEq(factory.extensionsAtIndex(1), extension2);
     }
 
     function test_Factory_ExtensionParams() public view {
+        // Extension is already initialized in setUp via center.initializeExtension
         (
-            address tokenAddr,
-            uint256 actionId,
             address anotherTokenAddr,
             uint256 waitingPhases,
             uint256 govRatioMult,
             uint256 minGovVotesVal
         ) = factory.extensionParams(address(extension));
 
-        assertEq(tokenAddr, address(token));
-        assertEq(actionId, ACTION_ID);
-        assertEq(anotherTokenAddr, address(anotherToken));
-        assertEq(waitingPhases, WAITING_PHASES);
-        assertEq(govRatioMult, GOV_RATIO_MULTIPLIER);
-        assertEq(minGovVotesVal, MIN_GOV_VOTES);
+        assertEq(
+            anotherTokenAddr,
+            address(anotherToken),
+            "anotherTokenAddr mismatch"
+        );
+        assertEq(waitingPhases, WAITING_PHASES, "waitingPhases mismatch");
+        assertEq(govRatioMult, GOV_RATIO_MULTIPLIER, "govRatioMult mismatch");
+        assertEq(minGovVotesVal, MIN_GOV_VOTES, "minGovVotesVal mismatch");
+
+        // tokenAddress and actionId are now stored in extension itself after initialization
+        assertEq(
+            extension.tokenAddress(),
+            address(token),
+            "tokenAddr mismatch"
+        );
+        assertEq(extension.actionId(), ACTION_ID, "actionId mismatch");
     }
 
     function test_Factory_ExtensionParams_NonExistent() public view {
         // Query params for non-existent extension
         (
-            address tokenAddr,
-            uint256 actionId,
             address anotherTokenAddr,
             uint256 waitingPhases,
             uint256 govRatioMult,
@@ -1525,8 +1554,6 @@ contract LOVE20ExtensionStakeLpTest is Test {
         ) = factory.extensionParams(address(0x999));
 
         // Should return zero values
-        assertEq(tokenAddr, address(0));
-        assertEq(actionId, 0);
         assertEq(anotherTokenAddr, address(0));
         assertEq(waitingPhases, 0);
         assertEq(govRatioMult, 0);
@@ -1537,42 +1564,12 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(factory.center(), address(center));
     }
 
-    function test_Factory_RevertIfInvalidTokenAddress() public {
-        vm.expectRevert(
-            ILOVE20ExtensionFactoryStakeLp.InvalidTokenAddress.selector
-        );
-        factory.createExtension(
-            address(0),
-            ACTION_ID,
-            address(anotherToken),
-            WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
-        );
-    }
-
     function test_Factory_RevertIfInvalidAnotherTokenAddress() public {
         vm.expectRevert(
             ILOVE20ExtensionFactoryStakeLp.InvalidAnotherTokenAddress.selector
         );
         factory.createExtension(
-            address(token),
-            ACTION_ID,
             address(0),
-            WAITING_PHASES,
-            GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
-        );
-    }
-
-    function test_Factory_RevertIfSameTokenAddresses() public {
-        vm.expectRevert(
-            ILOVE20ExtensionFactoryStakeLp.SameTokenAddresses.selector
-        );
-        factory.createExtension(
-            address(token),
-            ACTION_ID,
-            address(token),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
@@ -1584,12 +1581,27 @@ contract LOVE20ExtensionStakeLpTest is Test {
         MockERC20 newAnotherToken = new MockERC20();
 
         // Create extension but don't create pair
-        LOVE20ExtensionStakeLp newExtension = new LOVE20ExtensionStakeLp(
-            address(factory),
+        address newExtensionAddr = factory.createExtension(
             address(newAnotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
+        );
+
+        // Register factory to center for this token
+        submit.setCanSubmit(address(newToken), address(this), true);
+        center.addFactory(address(newToken), address(factory));
+
+        // Set action info
+        submit.setActionInfo(
+            address(newToken),
+            ACTION_ID + 100,
+            newExtensionAddr
+        );
+
+        // Convert address to contract instance
+        LOVE20ExtensionStakeLp newExtension = LOVE20ExtensionStakeLp(
+            newExtensionAddr
         );
 
         // Initialize should revert because pair doesn't exist
@@ -1611,8 +1623,6 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         // Create extension with reversed pair
         address reverseExtension = factory.createExtension(
-            address(token),
-            ACTION_ID + 10,
             address(anotherToken),
             WAITING_PHASES,
             GOV_RATIO_MULTIPLIER,
@@ -1623,9 +1633,15 @@ contract LOVE20ExtensionStakeLpTest is Test {
             reverseExtension
         );
 
-        // Initialize
-        vm.prank(address(center));
-        revExt.initialize(address(token), ACTION_ID + 10);
+        // Set action info
+        submit.setActionInfo(address(token), ACTION_ID + 10, reverseExtension);
+
+        // Initialize through center
+        center.initializeExtension(
+            reverseExtension,
+            address(token),
+            ACTION_ID + 10
+        );
 
         // Setup user
         reversePair.mint(user1, 100e18);
