@@ -15,8 +15,6 @@ import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2
 import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
-uint256 constant DEFAULT_JOIN_AMOUNT = 1000000000000000000; // 1 token
-
 /**
  * @title LOVE20ExtensionStakeLp
  * @notice LP staking extension for LOVE20 protocol with phase-based unlocking and reward distribution
@@ -115,13 +113,6 @@ contract LOVE20ExtensionStakeLp is
         }
         pair = IUniswapV2Pair(lpTokenAddress);
         isTokenAddressTheFirstToken = pair.token0() == tokenAddress;
-
-        // Approve token to joinAddress before joining
-        ILOVE20Token token = ILOVE20Token(tokenAddress);
-        token.approve(address(join), DEFAULT_JOIN_AMOUNT);
-
-        // Join the action
-        join.join(tokenAddress, actionId, DEFAULT_JOIN_AMOUNT, new string[](0));
     }
 
     // ============================================

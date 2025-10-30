@@ -11,12 +11,12 @@ contract MockJoin {
         internal _amounts;
 
     function join(
-        address,
-        uint256,
-        uint256,
-        string[] memory
-    ) external pure returns (bool) {
-        return true;
+        address tokenAddress,
+        uint256 actionId,
+        uint256 amount,
+        string[] memory /* args */
+    ) external {
+        _amounts[tokenAddress][actionId][msg.sender] = amount;
     }
 
     function setCurrentRound(uint256 round) external {
