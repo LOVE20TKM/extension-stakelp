@@ -40,9 +40,6 @@ contract LOVE20ExtensionStakeLp is
     // account => StakeInfo
     mapping(address => StakeInfo) internal _stakeInfo;
 
-    // round => reward
-    mapping(uint256 => uint256) internal _reward;
-
     // round => totalScore
     mapping(uint256 => uint256) internal _totalScore;
     // round => account[]
@@ -278,18 +275,6 @@ contract LOVE20ExtensionStakeLp is
                 _verifiedAccounts[round][i]
             ] = scoresCalculated[i];
         }
-    }
-
-    function _prepareRewardIfNeeded(uint256 round) internal {
-        if (_reward[round] > 0) {
-            return;
-        }
-        uint256 totalActionReward = _mint.mintActionReward(
-            tokenAddress,
-            round,
-            actionId
-        );
-        _reward[round] = totalActionReward;
     }
 
     function stakeLp(uint256 amount) external {
