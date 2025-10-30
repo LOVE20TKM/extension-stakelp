@@ -26,22 +26,14 @@ contract LOVE20ExtensionFactoryStakeLp is
     // StakeLp FACTORY FUNCTIONS
     // ============================================
     function createExtension(
-        address tokenAddress,
-        uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     ) external returns (address extension) {
         // Validate parameters
-        if (tokenAddress == address(0)) {
-            revert InvalidTokenAddress();
-        }
         if (anotherTokenAddress == address(0)) {
             revert InvalidAnotherTokenAddress();
-        }
-        if (tokenAddress == anotherTokenAddress) {
-            revert SameTokenAddresses();
         }
 
         extension = address(
@@ -56,8 +48,6 @@ contract LOVE20ExtensionFactoryStakeLp is
 
         // Store extension parameters
         _extensionParams[extension] = ExtensionParams({
-            tokenAddress: tokenAddress,
-            actionId: actionId,
             anotherTokenAddress: anotherTokenAddress,
             waitingPhases: waitingPhases,
             govRatioMultiplier: govRatioMultiplier,
@@ -65,12 +55,10 @@ contract LOVE20ExtensionFactoryStakeLp is
         });
 
         // Register extension in base contract
-        _registerExtension(tokenAddress, extension);
+        _registerExtension(extension);
 
         emit ExtensionCreated(
             extension,
-            tokenAddress,
-            actionId,
             anotherTokenAddress,
             waitingPhases,
             govRatioMultiplier,
@@ -80,14 +68,13 @@ contract LOVE20ExtensionFactoryStakeLp is
         return extension;
     }
 
+    /// @inheritdoc ILOVE20ExtensionFactoryStakeLp
     function extensionParams(
         address extension
     )
         external
         view
         returns (
-            address tokenAddress,
-            uint256 actionId,
             address anotherTokenAddress,
             uint256 waitingPhases,
             uint256 govRatioMultiplier,
@@ -96,8 +83,6 @@ contract LOVE20ExtensionFactoryStakeLp is
     {
         ExtensionParams memory params = _extensionParams[extension];
         return (
-            params.tokenAddress,
-            params.actionId,
             params.anotherTokenAddress,
             params.waitingPhases,
             params.govRatioMultiplier,

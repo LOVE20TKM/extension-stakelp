@@ -6,8 +6,6 @@ import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20Extension
 interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     /// @notice Extension creation parameters
     struct ExtensionParams {
-        address tokenAddress;
-        uint256 actionId;
         address anotherTokenAddress;
         uint256 waitingPhases;
         uint256 govRatioMultiplier;
@@ -28,8 +26,6 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
 
     event ExtensionCreated(
         address extension,
-        address indexed tokenAddress,
-        uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
@@ -37,22 +33,26 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     );
 
     function createExtension(
-        address tokenAddress,
-        uint256 actionId,
         address anotherTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     ) external returns (address extension);
 
+    /// @notice Get extension parameters
+    /// @dev tokenAddress and actionId are read from the extension contract itself
+    ///      (only available after initialization), other params are stored at creation
+    /// @param extension The extension address
+    /// @return anotherTokenAddress The paired token address
+    /// @return waitingPhases The waiting phases for unstaking
+    /// @return govRatioMultiplier The governance ratio multiplier
+    /// @return minGovVotes The minimum governance votes required
     function extensionParams(
         address extension
     )
         external
         view
         returns (
-            address tokenAddress,
-            uint256 actionId,
             address anotherTokenAddress,
             uint256 waitingPhases,
             uint256 govRatioMultiplier,
