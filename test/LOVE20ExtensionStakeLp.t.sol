@@ -991,7 +991,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         extension.claimReward(round);
 
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.AlreadyClaimed.selector);
+        vm.expectRevert(ILOVE20Extension.AlreadyClaimed.selector);
         extension.claimReward(round);
     }
 
@@ -1003,7 +1003,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         verify.setCurrentRound(1);
 
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.RoundNotFinished.selector);
+        vm.expectRevert(ILOVE20Extension.RoundNotFinished.selector);
         extension.claimReward(round);
     }
 
@@ -1042,7 +1042,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         // Cannot claim same round twice
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.AlreadyClaimed.selector);
+        vm.expectRevert(ILOVE20Extension.AlreadyClaimed.selector);
         extension.claimReward(round1);
     }
 

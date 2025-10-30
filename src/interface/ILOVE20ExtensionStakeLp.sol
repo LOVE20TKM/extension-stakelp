@@ -14,18 +14,11 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
     error NoStakedAmount();
     error UnstakeNotRequested();
     error NotEnoughWaitingPhases();
-    error AlreadyClaimed();
-    error RoundNotFinished();
     error InsufficientGovVotes();
 
     event Stake(address indexed account, uint256 amount);
     event Unstake(address indexed account, uint256 amount);
     event Withdraw(address indexed account, uint256 amount);
-    event ClaimReward(
-        address indexed account,
-        uint256 indexed round,
-        uint256 reward
-    );
 
     struct StakeInfo {
         uint256 amount;

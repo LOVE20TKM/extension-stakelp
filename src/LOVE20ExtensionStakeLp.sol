@@ -3,6 +3,7 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
+import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
 import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
@@ -48,8 +49,6 @@ contract LOVE20ExtensionStakeLp is
     mapping(uint256 => uint256[]) internal _scores;
     // round => account => score
     mapping(uint256 => mapping(address => uint256)) internal _scoreByAccount;
-    // round => account => claimedReward
-    mapping(uint256 => mapping(address => uint256)) internal _claimedReward;
 
     // ============================================
     // CONSTRUCTOR
@@ -129,7 +128,12 @@ contract LOVE20ExtensionStakeLp is
     function rewardByAccount(
         uint256 round,
         address account
-    ) external view returns (uint256 reward, bool isMinted) {
+    )
+        public
+        view
+        override(ILOVE20Extension, LOVE20ExtensionBase)
+        returns (uint256 reward, bool isMinted)
+    {
         uint256 claimedReward = _claimedReward[round][account];
         if (claimedReward > 0) {
             return (claimedReward, true);
@@ -208,54 +212,8 @@ contract LOVE20ExtensionStakeLp is
         return (totalCalculated, scoresCalculated);
     }
 
-    function claimReward(uint256 round) external returns (uint256 reward) {
-        // Check if already claimed
-        if (_claimedReward[round][msg.sender] > 0) {
-            revert AlreadyClaimed();
-        }
-
-        // Verify phase must be finished for this round
-        if (round >= _verify.currentRound()) {
-            revert RoundNotFinished();
-        }
-
-        // Prepare verify result and reward
-        _prepareVerifyResultIfNeeded(round);
-        _prepareRewardIfNeeded(round);
-
-        // Calculate reward for the user
-        uint256 total = _totalScore[round];
-        if (total == 0) {
-            return 0;
-        }
-
-        uint256 score = _scoreByAccount[round][msg.sender];
-        if (score == 0) {
-            return 0;
-        }
-
-        uint256 totalActionReward = _reward[round];
-        reward = (totalActionReward * score) / total;
-
-        if (reward == 0) {
-            return 0;
-        }
-
-        // Update claimed reward
-        _claimedReward[round][msg.sender] = reward;
-
-        // Transfer reward to user
-        if (reward > 0) {
-            ILOVE20Token token = ILOVE20Token(tokenAddress);
-            token.transfer(msg.sender, reward);
-        }
-
-        emit ClaimReward(msg.sender, round, reward);
-        return reward;
-    }
-
     // ------ user operations ------
-    function _prepareVerifyResultIfNeeded(uint256 round) internal {
+    function _prepareVerifyResultIfNeeded(uint256 round) internal override {
         if (_totalScore[round] > 0) {
             return;
         }
