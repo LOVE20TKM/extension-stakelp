@@ -247,6 +247,8 @@ contract LOVE20ExtensionStakeLp is
     }
 
     function withdraw() external {
+        _prepareVerifyResultIfNeeded();
+
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.requestedUnstakeRound == 0) {
             revert UnstakeNotRequested();
