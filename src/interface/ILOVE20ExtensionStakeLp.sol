@@ -46,7 +46,4 @@ interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionAutoScore {
     function unstakersAtIndex(uint256 index) external view returns (address);
     function totalStakedAmount() external view returns (uint256);
     function totalUnstakedAmount() external view returns (uint256);
-
-    // Note: Score-related functions (totalScore, accountsByRound, calculateScores,
-    // calculateScore, scores, scoreByAccount) are inherited from ILOVE20ExtensionAutoScore
 }
