@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
+import {
+    ILOVE20ExtensionScore
+} from "@extension/src/interface/ILOVE20ExtensionScore.sol";
 
-interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
+interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionScore {
     // Common errors (OnlyCenterCanCall, AlreadyInitialized, InvalidTokenAddress)
     // are defined in LOVE20ExtensionBase
 
     // StakeLp-specific errors
-    error UniswapV2PairNotCreated();
     error UnstakeRequested();
     error StakeAmountZero();
     error NoStakedAmount();
     error UnstakeNotRequested();
     error NotEnoughWaitingPhases();
     error InsufficientGovVotes();
+    error InvalidStakeTokenAddress();
 
     event Stake(address indexed account, uint256 amount);
     event Unstake(address indexed account, uint256 amount);
@@ -25,55 +27,26 @@ interface ILOVE20ExtensionStakeLp is ILOVE20Extension {
         uint256 requestedUnstakeRound;
     }
 
-    function anotherTokenAddress() external view returns (address);
+    function stakeTokenAddress() external view returns (address);
     function waitingPhases() external view returns (uint256);
     function govRatioMultiplier() external view returns (uint256);
     function minGovVotes() external view returns (uint256);
-    function lpTokenAddress() external view returns (address);
 
-    function stakeLp(uint256 amount) external;
-    function unstakeLp() external;
-    function withdrawLp() external;
+    function stake(uint256 amount) external;
+    function unstake() external;
+    function withdraw() external;
 
     function stakeInfo(
         address account
     ) external view returns (uint256 amount, uint256 requestedUnstakeRound);
-    function stakers() external view returns (address[] memory);
-    function stakersCount() external view returns (uint256);
-    function stakersAtIndex(uint256 index) external view returns (address);
+    // stakers() related functions removed - use accounts(), accountsCount(), accountAtIndex() from ILOVE20Extension instead
 
     function unstakers() external view returns (address[] memory);
     function unstakersCount() external view returns (uint256);
     function unstakersAtIndex(uint256 index) external view returns (address);
     function totalStakedAmount() external view returns (uint256);
     function totalUnstakedAmount() external view returns (uint256);
-    function totalScore(uint256 round) external view returns (uint256);
-    function verifiedAccounts(
-        uint256 round
-    ) external view returns (address[] memory);
-    function verifiedAccountsCount(
-        uint256 round
-    ) external view returns (uint256);
-    function verifiedAccountsAtIndex(
-        uint256 round,
-        uint256 index
-    ) external view returns (address);
 
-    function calculateScores()
-        external
-        view
-        returns (uint256 total, uint256[] memory scores);
-    function calculateScore(
-        address account
-    ) external view returns (uint256 total, uint256 score);
-    function scores(uint256 round) external view returns (uint256[] memory);
-    function scoresCount(uint256 round) external view returns (uint256);
-    function scoresAtIndex(
-        uint256 round,
-        uint256 index
-    ) external view returns (uint256);
-    function scoreByAccount(
-        uint256 round,
-        address account
-    ) external view returns (uint256);
+    // Note: Score-related functions (totalScore, accountsByRound, calculateScores,
+    // calculateScore, scores, scoreByAccount) are inherited from ILOVE20ExtensionScore
 }

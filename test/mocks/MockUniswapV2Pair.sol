@@ -8,6 +8,7 @@ import {MockERC20} from "./MockERC20.sol";
  * @notice Mock Uniswap V2 pair contract for testing
  */
 contract MockUniswapV2Pair is MockERC20 {
+    address internal _factory;
     address internal _token0;
     address internal _token1;
     uint112 internal _reserve0;
@@ -17,6 +18,14 @@ contract MockUniswapV2Pair is MockERC20 {
     constructor(address token0_, address token1_) {
         _token0 = token0_;
         _token1 = token1_;
+    }
+
+    function setFactory(address factory_) external {
+        _factory = factory_;
+    }
+
+    function factory() external view returns (address) {
+        return _factory;
     }
 
     function token0() external view returns (address) {

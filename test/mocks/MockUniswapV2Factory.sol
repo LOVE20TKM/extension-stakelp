@@ -15,6 +15,7 @@ contract MockUniswapV2Factory {
         address tokenB
     ) external returns (address pair) {
         pair = address(new MockUniswapV2Pair(tokenA, tokenB));
+        MockUniswapV2Pair(pair).setFactory(address(this));
         _pairs[tokenA][tokenB] = pair;
         _pairs[tokenB][tokenA] = pair;
         return pair;

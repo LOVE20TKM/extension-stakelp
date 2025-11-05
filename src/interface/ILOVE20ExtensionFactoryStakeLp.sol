@@ -6,7 +6,7 @@ import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20Extension
 interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     /// @notice Extension creation parameters
     struct ExtensionParams {
-        address anotherTokenAddress;
+        address stakeTokenAddress;
         uint256 waitingPhases;
         uint256 govRatioMultiplier;
         uint256 minGovVotes;
@@ -17,8 +17,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     // ============================================
 
     error InvalidTokenAddress();
-    error InvalidAnotherTokenAddress();
-    error SameTokenAddresses();
+    error InvalidStakeTokenAddress();
 
     // ============================================
     // EVENTS
@@ -26,14 +25,14 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
 
     event ExtensionCreated(
         address extension,
-        address anotherTokenAddress,
+        address stakeTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     );
 
     function createExtension(
-        address anotherTokenAddress,
+        address stakeTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
@@ -43,7 +42,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     /// @dev tokenAddress and actionId are read from the extension contract itself
     ///      (only available after initialization), other params are stored at creation
     /// @param extension The extension address
-    /// @return anotherTokenAddress The paired token address
+    /// @return stakeTokenAddress The staking token address
     /// @return waitingPhases The waiting phases for unstaking
     /// @return govRatioMultiplier The governance ratio multiplier
     /// @return minGovVotes The minimum governance votes required
@@ -53,7 +52,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         external
         view
         returns (
-            address anotherTokenAddress,
+            address stakeTokenAddress,
             uint256 waitingPhases,
             uint256 govRatioMultiplier,
             uint256 minGovVotes

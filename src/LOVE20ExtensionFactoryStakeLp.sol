@@ -26,20 +26,20 @@ contract LOVE20ExtensionFactoryStakeLp is
     // StakeLp FACTORY FUNCTIONS
     // ============================================
     function createExtension(
-        address anotherTokenAddress,
+        address stakeTokenAddress,
         uint256 waitingPhases,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     ) external returns (address extension) {
         // Validate parameters
-        if (anotherTokenAddress == address(0)) {
-            revert InvalidAnotherTokenAddress();
+        if (stakeTokenAddress == address(0)) {
+            revert InvalidStakeTokenAddress();
         }
 
         extension = address(
             new LOVE20ExtensionStakeLp(
                 address(this),
-                anotherTokenAddress,
+                stakeTokenAddress,
                 waitingPhases,
                 govRatioMultiplier,
                 minGovVotes
@@ -48,7 +48,7 @@ contract LOVE20ExtensionFactoryStakeLp is
 
         // Store extension parameters
         _extensionParams[extension] = ExtensionParams({
-            anotherTokenAddress: anotherTokenAddress,
+            stakeTokenAddress: stakeTokenAddress,
             waitingPhases: waitingPhases,
             govRatioMultiplier: govRatioMultiplier,
             minGovVotes: minGovVotes
@@ -59,7 +59,7 @@ contract LOVE20ExtensionFactoryStakeLp is
 
         emit ExtensionCreated(
             extension,
-            anotherTokenAddress,
+            stakeTokenAddress,
             waitingPhases,
             govRatioMultiplier,
             minGovVotes
@@ -75,7 +75,7 @@ contract LOVE20ExtensionFactoryStakeLp is
         external
         view
         returns (
-            address anotherTokenAddress,
+            address stakeTokenAddress,
             uint256 waitingPhases,
             uint256 govRatioMultiplier,
             uint256 minGovVotes
@@ -83,7 +83,7 @@ contract LOVE20ExtensionFactoryStakeLp is
     {
         ExtensionParams memory params = _extensionParams[extension];
         return (
-            params.anotherTokenAddress,
+            params.stakeTokenAddress,
             params.waitingPhases,
             params.govRatioMultiplier,
             params.minGovVotes

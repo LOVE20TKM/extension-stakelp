@@ -2,91 +2,97 @@
 pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
+import {
+    LOVE20ExtensionScoreBase
+} from "@extension/src/LOVE20ExtensionScoreBase.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
+import {
+    ILOVE20ExtensionScore
+} from "@extension/src/interface/ILOVE20ExtensionScore.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
-import {ILOVE20ExtensionCenter} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
-import {IUniswapV2Factory} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Factory.sol";
-import {IUniswapV2Pair} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
-import {ILOVE20Token} from "@core/src/interfaces/ILOVE20Token.sol";
+import {
+    ILOVE20ExtensionCenter
+} from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
+import {
+    IERC20
+} from "@core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {
+    IUniswapV2Pair
+} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
-/**
- * @title LOVE20ExtensionStakeLp
- * @notice LP staking extension for LOVE20 protocol with phase-based unlocking and reward distribution
- * @dev Extends LOVE20ExtensionBase and implements ILOVE20ExtensionStakeLp interface
- */
 contract LOVE20ExtensionStakeLp is
-    LOVE20ExtensionBase,
+    LOVE20ExtensionScoreBase,
     ILOVE20ExtensionStakeLp
 {
-    using ArrayUtils for address[];
-
     // ============================================
     // STATE VARIABLES
     // ============================================
 
-    address public immutable anotherTokenAddress;
+    address public immutable stakeTokenAddress;
     uint256 public immutable waitingPhases;
     uint256 public immutable govRatioMultiplier;
     uint256 public immutable minGovVotes;
-    address public lpTokenAddress;
-
-    IUniswapV2Pair internal _pair;
-    bool internal _isTokenAddressTheFirstToken;
 
     uint256 public totalStakedAmount;
     uint256 public totalUnstakedAmount;
-    address[] internal _stakers;
     address[] internal _unstakers;
     // account => StakeInfo
     mapping(address => StakeInfo) internal _stakeInfo;
 
-    // round => totalScore
-    mapping(uint256 => uint256) internal _totalScore;
-    // round => account[]
-    mapping(uint256 => address[]) internal _verifiedAccounts;
-    // round => score[]
-    mapping(uint256 => uint256[]) internal _scores;
-    // round => account => score
-    mapping(uint256 => mapping(address => uint256)) internal _scoreByAccount;
-
-    // ============================================
-    // CONSTRUCTOR
-    // ============================================
+    IERC20 internal _stakeToken;
 
     constructor(
         address factory_,
-        address anotherTokenAddress_,
+        address stakeTokenAddress_,
         uint256 waitingPhases_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
-    ) LOVE20ExtensionBase(factory_) {
-        anotherTokenAddress = anotherTokenAddress_;
+    ) LOVE20ExtensionScoreBase(factory_) {
+        stakeTokenAddress = stakeTokenAddress_;
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
         minGovVotes = minGovVotes_;
+        _stakeToken = IERC20(stakeTokenAddress_);
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
+    function initialize(
+        address tokenAddress_,
+        uint256 actionId_
+    ) public override(ILOVE20Extension, LOVE20ExtensionBase) {
+        super.initialize(tokenAddress_, actionId_);
 
-    /// @dev Hook called after base initialization
-    /// Sets up LP token pair and joins the action
-    function _afterInitialize() internal override {
-        // Initialize LP token pair after tokenAddress is set
-        IUniswapV2Factory uniswapV2Factory = IUniswapV2Factory(
-            ILOVE20ExtensionCenter(center()).uniswapV2FactoryAddress()
-        );
-        lpTokenAddress = uniswapV2Factory.getPair(
-            tokenAddress,
-            anotherTokenAddress
-        );
-        if (lpTokenAddress == address(0)) {
-            revert UniswapV2PairNotCreated();
+        address uniswapV2FactoryAddress = ILOVE20ExtensionCenter(center())
+            .uniswapV2FactoryAddress();
+
+        try IUniswapV2Pair(stakeTokenAddress).factory() returns (
+            address pairFactory
+        ) {
+            if (pairFactory != uniswapV2FactoryAddress) {
+                revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+            }
+        } catch {
+            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
         }
-        _pair = IUniswapV2Pair(lpTokenAddress);
-        _isTokenAddressTheFirstToken = _pair.token0() == tokenAddress;
+        address pairToken0;
+        address pairToken1;
+        try IUniswapV2Pair(stakeTokenAddress).token0() returns (
+            address token0
+        ) {
+            pairToken0 = token0;
+        } catch {
+            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+        }
+        try IUniswapV2Pair(stakeTokenAddress).token1() returns (
+            address token1
+        ) {
+            pairToken1 = token1;
+        } catch {
+            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+        }
+        if (pairToken0 != tokenAddress && pairToken1 != tokenAddress) {
+            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+        }
     }
 
     // ============================================
@@ -97,84 +103,54 @@ contract LOVE20ExtensionStakeLp is
         return true;
     }
 
-    function joinedValue() external view returns (uint256) {
-        return _calculateJoinedValue(totalStakedAmount);
-    }
-
-    function _calculateJoinedValue(
+    function _lpToTokenAmount(
         uint256 lpAmount
     ) internal view returns (uint256) {
-        (uint256 reserve0, uint256 reserve1, ) = _pair.getReserves();
-        uint256 totalTokenAmount = (
-            _isTokenAddressTheFirstToken ? reserve0 : reserve1
-        ) * 2;
+        if (lpAmount == 0) {
+            return 0;
+        }
 
-        uint256 totalLp = _pair.totalSupply();
+        IUniswapV2Pair pair = IUniswapV2Pair(stakeTokenAddress);
+
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 totalLp = pair.totalSupply();
+
         if (totalLp == 0) {
             return 0;
         }
-        return (lpAmount * totalTokenAmount) / totalLp;
+
+        address pairToken0 = pair.token0();
+        uint256 tokenReserve = (pairToken0 == tokenAddress)
+            ? uint256(reserve0)
+            : uint256(reserve1);
+
+        return (lpAmount * tokenReserve) / totalLp;
+    }
+
+    function joinedValue() external view returns (uint256) {
+        return _lpToTokenAmount(totalStakedAmount);
     }
 
     function joinedValueByAccount(
         address account
     ) external view returns (uint256) {
         StakeInfo storage info = _stakeInfo[account];
-        return _calculateJoinedValue(info.amount);
-    }
-
-    // accounts(), accountsCount(), accountAtIndex() are inherited from LOVE20ExtensionBase
-
-    function rewardByAccount(
-        uint256 round,
-        address account
-    )
-        public
-        view
-        override(ILOVE20Extension, LOVE20ExtensionBase)
-        returns (uint256 reward, bool isMinted)
-    {
-        uint256 claimedReward = _claimedReward[round][account];
-        if (claimedReward > 0) {
-            return (claimedReward, true);
-        }
-
-        // don't know the reward if verify phase is not finished
-        if (round >= _verify.currentRound()) {
-            return (0, false);
-        }
-
-        (uint256 totalActionReward, ) = _mint.actionRewardByActionIdByAccount(
-            tokenAddress,
-            round,
-            actionId,
-            address(this)
-        );
-
-        uint256 total = _totalScore[round];
-        uint256 score;
-        if (total > 0) {
-            // already verified
-            score = _scoreByAccount[round][account];
-        } else {
-            // if verify result is not prepared then calculate reward
-            (total, score) = calculateScore(account);
-        }
-
-        if (total == 0) {
-            return (0, false);
-        }
-        return ((totalActionReward * score) / total, false);
+        return _lpToTokenAmount(info.amount);
     }
 
     function calculateScore(
         address account
-    ) public view returns (uint256 total, uint256 score) {
+    )
+        public
+        view
+        override(ILOVE20ExtensionScore, LOVE20ExtensionScoreBase)
+        returns (uint256 total, uint256 score)
+    {
         uint256[] memory scoresCalculated;
         (total, scoresCalculated) = calculateScores();
         score = 0;
         for (uint256 i = 0; i < scoresCalculated.length; i++) {
-            if (_stakers[i] == account) {
+            if (_accounts[i] == account) {
                 score = scoresCalculated[i];
                 break;
             }
@@ -185,26 +161,30 @@ contract LOVE20ExtensionStakeLp is
     function calculateScores()
         public
         view
+        override(ILOVE20ExtensionScore, LOVE20ExtensionScoreBase)
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
-        uint256 totalLp = _pair.totalSupply();
+        uint256 totalTokenSupply = _stakeToken.totalSupply();
         uint256 totalGovVotes = _stake.govVotesNum(tokenAddress);
 
-        // Return empty if no LP or no gov votes
-        if (totalLp == 0 || totalGovVotes == 0) {
+        if (totalTokenSupply == 0 || totalGovVotes == 0) {
             return (0, new uint256[](0));
         }
 
-        scoresCalculated = new uint256[](_stakers.length);
-        for (uint256 i = 0; i < _stakers.length; i++) {
-            address account = _stakers[i];
-            uint256 lp = _stakeInfo[account].amount;
+        scoresCalculated = new uint256[](_accounts.length);
+        for (uint256 i = 0; i < _accounts.length; i++) {
+            address account = _accounts[i];
+            uint256 stakedAmount = _stakeInfo[account].amount;
             uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
-            uint256 lpRatio = (lp * 1000000) / totalLp;
+
+            uint256 tokenRatio = (stakedAmount * 1000000) / totalTokenSupply;
+
             uint256 govVotesRatio = (govVotes * 1000000 * govRatioMultiplier) /
                 totalGovVotes;
 
-            uint256 score = lpRatio > govVotesRatio ? govVotesRatio : lpRatio;
+            uint256 score = tokenRatio > govVotesRatio
+                ? govVotesRatio
+                : tokenRatio;
 
             scoresCalculated[i] = score;
             totalCalculated += score;
@@ -212,31 +192,12 @@ contract LOVE20ExtensionStakeLp is
         return (totalCalculated, scoresCalculated);
     }
 
-    // ------ user operations ------
-    function _prepareVerifyResultIfNeeded(uint256 round) internal override {
-        if (_totalScore[round] > 0) {
-            return;
-        }
-        if (round > _verify.currentRound()) {
-            return;
-        }
-        (
-            uint256 totalCalculated,
-            uint256[] memory scoresCalculated
-        ) = calculateScores();
-        _totalScore[round] = totalCalculated;
-        _scores[round] = scoresCalculated;
-        // Save accounts snapshot and score mapping for this round
-        _verifiedAccounts[round] = _stakers;
-        for (uint256 i = 0; i < _verifiedAccounts[round].length; i++) {
-            _scoreByAccount[round][
-                _verifiedAccounts[round][i]
-            ] = scoresCalculated[i];
-        }
-    }
+    // ============================================
+    // USER OPERATIONS
+    // ============================================
 
-    function stakeLp(uint256 amount) external {
-        _prepareVerifyResultIfNeeded(_verify.currentRound());
+    function stake(uint256 amount) external {
+        _prepareVerifyResultIfNeeded();
 
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.requestedUnstakeRound != 0) {
@@ -248,7 +209,6 @@ contract LOVE20ExtensionStakeLp is
 
         bool isNewStaker = info.amount == 0;
         if (isNewStaker) {
-            // Check if msg.sender has sufficient governance votes on first stake
             uint256 userGovVotes = _stake.validGovVotes(
                 tokenAddress,
                 msg.sender
@@ -257,18 +217,17 @@ contract LOVE20ExtensionStakeLp is
                 revert InsufficientGovVotes();
             }
 
-            _stakers.push(msg.sender);
             _addAccount(msg.sender);
         }
 
         info.amount += amount;
         totalStakedAmount += amount;
-        _pair.transferFrom(msg.sender, address(this), amount);
+        _stakeToken.transferFrom(msg.sender, address(this), amount);
         emit Stake(msg.sender, amount);
     }
 
-    function unstakeLp() external {
-        _prepareVerifyResultIfNeeded(_verify.currentRound());
+    function unstake() external {
+        _prepareVerifyResultIfNeeded();
 
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.amount == 0) {
@@ -281,14 +240,13 @@ contract LOVE20ExtensionStakeLp is
         totalStakedAmount -= info.amount;
         totalUnstakedAmount += info.amount;
 
-        // Move from stakers to unstakers
-        ArrayUtils.remove(_stakers, msg.sender);
+        _removeAccount(msg.sender);
         _unstakers.push(msg.sender);
 
         emit Unstake(msg.sender, info.amount);
     }
 
-    function withdrawLp() external {
+    function withdraw() external {
         StakeInfo storage info = _stakeInfo[msg.sender];
         if (info.requestedUnstakeRound == 0) {
             revert UnstakeNotRequested();
@@ -303,15 +261,16 @@ contract LOVE20ExtensionStakeLp is
         info.requestedUnstakeRound = 0;
         totalUnstakedAmount -= amount;
 
-        // Remove from unstakers and accounts (no longer in stakers or unstakers)
         ArrayUtils.remove(_unstakers, msg.sender);
-        _removeAccount(msg.sender);
 
-        _pair.transfer(msg.sender, amount);
+        _stakeToken.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
     }
 
-    // ------ view functions ------
+    // ============================================
+    // VIEW FUNCTIONS - STAKE INFO
+    // ============================================
+
     function stakeInfo(
         address account
     ) external view returns (uint256 amount, uint256 requestedUnstakeRound) {
@@ -319,18 +278,6 @@ contract LOVE20ExtensionStakeLp is
             _stakeInfo[account].amount,
             _stakeInfo[account].requestedUnstakeRound
         );
-    }
-
-    function stakers() external view returns (address[] memory) {
-        return _stakers;
-    }
-
-    function stakersCount() external view returns (uint256) {
-        return _stakers.length;
-    }
-
-    function stakersAtIndex(uint256 index) external view returns (address) {
-        return _stakers[index];
     }
 
     function unstakers() external view returns (address[] memory) {
@@ -343,50 +290,5 @@ contract LOVE20ExtensionStakeLp is
 
     function unstakersAtIndex(uint256 index) external view returns (address) {
         return _unstakers[index];
-    }
-
-    function totalScore(uint256 round) external view returns (uint256) {
-        return _totalScore[round];
-    }
-
-    function verifiedAccounts(
-        uint256 round
-    ) external view returns (address[] memory) {
-        return _verifiedAccounts[round];
-    }
-
-    function verifiedAccountsCount(
-        uint256 round
-    ) external view returns (uint256) {
-        return _verifiedAccounts[round].length;
-    }
-
-    function verifiedAccountsAtIndex(
-        uint256 round,
-        uint256 index
-    ) external view returns (address) {
-        return _verifiedAccounts[round][index];
-    }
-
-    function scores(uint256 round) external view returns (uint256[] memory) {
-        return _scores[round];
-    }
-
-    function scoresCount(uint256 round) external view returns (uint256) {
-        return _scores[round].length;
-    }
-
-    function scoresAtIndex(
-        uint256 round,
-        uint256 index
-    ) external view returns (uint256) {
-        return _scores[round][index];
-    }
-
-    function scoreByAccount(
-        uint256 round,
-        address account
-    ) external view returns (uint256) {
-        return _scoreByAccount[round][account];
     }
 }
