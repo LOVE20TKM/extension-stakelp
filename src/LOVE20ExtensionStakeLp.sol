@@ -3,12 +3,12 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
 import {
-    LOVE20ExtensionScoreBase
-} from "@extension/src/LOVE20ExtensionScoreBase.sol";
+    LOVE20ExtensionAutoScore
+} from "@extension/src/LOVE20ExtensionAutoScore.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
 import {
-    ILOVE20ExtensionScore
-} from "@extension/src/interface/ILOVE20ExtensionScore.sol";
+    ILOVE20ExtensionAutoScore
+} from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {
     ILOVE20ExtensionCenter
@@ -22,7 +22,7 @@ import {
 import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
 contract LOVE20ExtensionStakeLp is
-    LOVE20ExtensionScoreBase,
+    LOVE20ExtensionAutoScore,
     ILOVE20ExtensionStakeLp
 {
     // ============================================
@@ -48,7 +48,7 @@ contract LOVE20ExtensionStakeLp is
         uint256 waitingPhases_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
-    ) LOVE20ExtensionScoreBase(factory_) {
+    ) LOVE20ExtensionAutoScore(factory_) {
         stakeTokenAddress = stakeTokenAddress_;
         waitingPhases = waitingPhases_;
         govRatioMultiplier = govRatioMultiplier_;
@@ -143,7 +143,7 @@ contract LOVE20ExtensionStakeLp is
     )
         public
         view
-        override(ILOVE20ExtensionScore, LOVE20ExtensionScoreBase)
+        override(ILOVE20ExtensionAutoScore, LOVE20ExtensionAutoScore)
         returns (uint256 total, uint256 score)
     {
         uint256[] memory scoresCalculated;
@@ -161,7 +161,7 @@ contract LOVE20ExtensionStakeLp is
     function calculateScores()
         public
         view
-        override(ILOVE20ExtensionScore, LOVE20ExtensionScoreBase)
+        override(ILOVE20ExtensionAutoScore, LOVE20ExtensionAutoScore)
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
         uint256 totalTokenSupply = _stakeToken.totalSupply();

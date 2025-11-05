@@ -2,10 +2,10 @@
 pragma solidity =0.8.17;
 
 import {
-    ILOVE20ExtensionScore
-} from "@extension/src/interface/ILOVE20ExtensionScore.sol";
+    ILOVE20ExtensionAutoScore
+} from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
 
-interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionScore {
+interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionAutoScore {
     // Common errors (OnlyCenterCanCall, AlreadyInitialized, InvalidTokenAddress)
     // are defined in LOVE20ExtensionBase
 
@@ -48,5 +48,5 @@ interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionScore {
     function totalUnstakedAmount() external view returns (uint256);
 
     // Note: Score-related functions (totalScore, accountsByRound, calculateScores,
-    // calculateScore, scores, scoreByAccount) are inherited from ILOVE20ExtensionScore
+    // calculateScore, scores, scoreByAccount) are inherited from ILOVE20ExtensionAutoScore
 }
