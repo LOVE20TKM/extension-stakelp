@@ -2,48 +2,15 @@
 pragma solidity =0.8.17;
 
 import {
-    ILOVE20ExtensionAutoScore
-} from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
+    ILOVE20ExtensionAutoScoreStake
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
 
-interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionAutoScore {
-    // Common errors (OnlyCenterCanCall, AlreadyInitialized, InvalidTokenAddress)
-    // are defined in LOVE20ExtensionBase
-
-    // StakeLp-specific errors
-    error UnstakeRequested();
-    error StakeAmountZero();
-    error NoStakedAmount();
-    error UnstakeNotRequested();
-    error NotEnoughWaitingPhases();
-    error InsufficientGovVotes();
+interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionAutoScoreStake {
+    // StakeLp-specific errors (stake-related errors are in ILOVE20ExtensionAutoScoreStake)
     error InvalidStakeTokenAddress();
 
-    event Stake(address indexed account, uint256 amount);
-    event Unstake(address indexed account, uint256 amount);
-    event Withdraw(address indexed account, uint256 amount);
+    // Stake-related events and functions are inherited from ILOVE20ExtensionAutoScoreStake
 
-    struct StakeInfo {
-        uint256 amount;
-        uint256 requestedUnstakeRound;
-    }
-
-    function stakeTokenAddress() external view returns (address);
-    function waitingPhases() external view returns (uint256);
+    // StakeLp-specific config
     function govRatioMultiplier() external view returns (uint256);
-    function minGovVotes() external view returns (uint256);
-
-    function stake(uint256 amount) external;
-    function unstake() external;
-    function withdraw() external;
-
-    function stakeInfo(
-        address account
-    ) external view returns (uint256 amount, uint256 requestedUnstakeRound);
-    // stakers() related functions removed - use accounts(), accountsCount(), accountAtIndex() from ILOVE20Extension instead
-
-    function unstakers() external view returns (address[] memory);
-    function unstakersCount() external view returns (uint256);
-    function unstakersAtIndex(uint256 index) external view returns (address);
-    function totalStakedAmount() external view returns (uint256);
-    function totalUnstakedAmount() external view returns (uint256);
 }

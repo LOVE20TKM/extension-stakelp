@@ -3,9 +3,15 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
 import {
+    LOVE20ExtensionAutoScoreStake
+} from "@extension/src/LOVE20ExtensionAutoScoreStake.sol";
+import {
     LOVE20ExtensionAutoScore
 } from "@extension/src/LOVE20ExtensionAutoScore.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
+import {
+    ILOVE20ExtensionAutoScoreStake
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
 import {
     ILOVE20ExtensionAutoScore
 } from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
@@ -19,28 +25,16 @@ import {
 import {
     IUniswapV2Pair
 } from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
-import {ArrayUtils} from "@core/src/lib/ArrayUtils.sol";
 
 contract LOVE20ExtensionStakeLp is
-    LOVE20ExtensionAutoScore,
+    LOVE20ExtensionAutoScoreStake,
     ILOVE20ExtensionStakeLp
 {
     // ============================================
     // STATE VARIABLES
     // ============================================
 
-    address public immutable stakeTokenAddress;
-    uint256 public immutable waitingPhases;
     uint256 public immutable govRatioMultiplier;
-    uint256 public immutable minGovVotes;
-
-    uint256 public totalStakedAmount;
-    uint256 public totalUnstakedAmount;
-    address[] internal _unstakers;
-    // account => StakeInfo
-    mapping(address => StakeInfo) internal _stakeInfo;
-
-    IERC20 internal _stakeToken;
 
     constructor(
         address factory_,
@@ -48,12 +42,15 @@ contract LOVE20ExtensionStakeLp is
         uint256 waitingPhases_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
-    ) LOVE20ExtensionAutoScore(factory_) {
-        stakeTokenAddress = stakeTokenAddress_;
-        waitingPhases = waitingPhases_;
+    )
+        LOVE20ExtensionAutoScoreStake(
+            factory_,
+            stakeTokenAddress_,
+            waitingPhases_,
+            minGovVotes_
+        )
+    {
         govRatioMultiplier = govRatioMultiplier_;
-        minGovVotes = minGovVotes_;
-        _stakeToken = IERC20(stakeTokenAddress_);
     }
 
     function initialize(
@@ -61,7 +58,10 @@ contract LOVE20ExtensionStakeLp is
         uint256 actionId_
     ) public override(ILOVE20Extension, LOVE20ExtensionBase) {
         super.initialize(tokenAddress_, actionId_);
+        _validateStakeToken();
+    }
 
+    function _validateStakeToken() internal view {
         address uniswapV2FactoryAddress = ILOVE20ExtensionCenter(center())
             .uniswapV2FactoryAddress();
 
@@ -134,9 +134,15 @@ contract LOVE20ExtensionStakeLp is
     function joinedValueByAccount(
         address account
     ) external view returns (uint256) {
-        StakeInfo storage info = _stakeInfo[account];
+        ILOVE20ExtensionAutoScoreStake.StakeInfo storage info = _stakeInfo[
+            account
+        ];
         return _lpToTokenAmount(info.amount);
     }
+
+    // ============================================
+    // ILOVE20ExtensionAutoScore IMPLEMENTATION
+    // ============================================
 
     function calculateScore(
         address account
@@ -190,107 +196,5 @@ contract LOVE20ExtensionStakeLp is
             totalCalculated += score;
         }
         return (totalCalculated, scoresCalculated);
-    }
-
-    // ============================================
-    // USER OPERATIONS
-    // ============================================
-
-    function stake(uint256 amount) external {
-        _prepareVerifyResultIfNeeded();
-
-        StakeInfo storage info = _stakeInfo[msg.sender];
-        if (info.requestedUnstakeRound != 0) {
-            revert UnstakeRequested();
-        }
-        if (amount == 0) {
-            revert StakeAmountZero();
-        }
-
-        bool isNewStaker = info.amount == 0;
-        if (isNewStaker) {
-            uint256 userGovVotes = _stake.validGovVotes(
-                tokenAddress,
-                msg.sender
-            );
-            if (userGovVotes < minGovVotes) {
-                revert InsufficientGovVotes();
-            }
-
-            _addAccount(msg.sender);
-        }
-
-        info.amount += amount;
-        totalStakedAmount += amount;
-        _stakeToken.transferFrom(msg.sender, address(this), amount);
-        emit Stake(msg.sender, amount);
-    }
-
-    function unstake() external {
-        _prepareVerifyResultIfNeeded();
-
-        StakeInfo storage info = _stakeInfo[msg.sender];
-        if (info.amount == 0) {
-            revert NoStakedAmount();
-        }
-        if (info.requestedUnstakeRound != 0) {
-            revert UnstakeRequested();
-        }
-        info.requestedUnstakeRound = _join.currentRound();
-        totalStakedAmount -= info.amount;
-        totalUnstakedAmount += info.amount;
-
-        _removeAccount(msg.sender);
-        _unstakers.push(msg.sender);
-
-        emit Unstake(msg.sender, info.amount);
-    }
-
-    function withdraw() external {
-        _prepareVerifyResultIfNeeded();
-
-        StakeInfo storage info = _stakeInfo[msg.sender];
-        if (info.requestedUnstakeRound == 0) {
-            revert UnstakeNotRequested();
-        }
-        if (
-            _join.currentRound() - info.requestedUnstakeRound <= waitingPhases
-        ) {
-            revert NotEnoughWaitingPhases();
-        }
-        uint256 amount = info.amount;
-        info.amount = 0;
-        info.requestedUnstakeRound = 0;
-        totalUnstakedAmount -= amount;
-
-        ArrayUtils.remove(_unstakers, msg.sender);
-
-        _stakeToken.transfer(msg.sender, amount);
-        emit Withdraw(msg.sender, amount);
-    }
-
-    // ============================================
-    // VIEW FUNCTIONS - STAKE INFO
-    // ============================================
-
-    function stakeInfo(
-        address account
-    ) external view returns (uint256 amount, uint256 requestedUnstakeRound) {
-        return (
-            _stakeInfo[account].amount,
-            _stakeInfo[account].requestedUnstakeRound
-        );
-    }
-
-    function unstakers() external view returns (address[] memory) {
-        return _unstakers;
-    }
-
-    function unstakersCount() external view returns (uint256) {
-        return _unstakers.length;
-    }
-
-    function unstakersAtIndex(uint256 index) external view returns (address) {
-        return _unstakers[index];
     }
 }

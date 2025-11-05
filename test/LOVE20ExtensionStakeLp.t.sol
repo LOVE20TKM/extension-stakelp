@@ -10,6 +10,9 @@ import {
     ILOVE20ExtensionStakeLp
 } from "../src/interface/ILOVE20ExtensionStakeLp.sol";
 import {
+    ILOVE20ExtensionAutoScoreStake
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
+import {
     ILOVE20ExtensionFactoryStakeLp
 } from "../src/interface/ILOVE20ExtensionFactoryStakeLp.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
@@ -348,7 +351,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_StakeLp_RevertIfAmountZero() public {
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.StakeAmountZero.selector);
+        vm.expectRevert(
+            ILOVE20ExtensionAutoScoreStake.StakeAmountZero.selector
+        );
         extension.stake(0);
     }
 
@@ -360,7 +365,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
         extension.unstake();
 
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.UnstakeRequested.selector);
+        vm.expectRevert(
+            ILOVE20ExtensionAutoScoreStake.UnstakeRequested.selector
+        );
         extension.stake(10e18);
     }
 
@@ -376,7 +383,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         // Expect revert when first time staking with insufficient gov votes
         vm.prank(user4);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.InsufficientGovVotes.selector);
+        vm.expectRevert(
+            ILOVE20ExtensionAutoScoreStake.InsufficientGovVotes.selector
+        );
         extension.stake(50e18);
     }
 
@@ -475,7 +484,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_UnstakeLp_RevertIfNoStakedAmount() public {
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.NoStakedAmount.selector);
+        vm.expectRevert(ILOVE20ExtensionAutoScoreStake.NoStakedAmount.selector);
         extension.unstake();
     }
 
@@ -487,7 +496,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
         extension.unstake();
 
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.UnstakeRequested.selector);
+        vm.expectRevert(
+            ILOVE20ExtensionAutoScoreStake.UnstakeRequested.selector
+        );
         extension.unstake();
     }
 
@@ -541,7 +552,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_WithdrawLp_RevertIfUnstakeNotRequested() public {
         vm.prank(user1);
-        vm.expectRevert(ILOVE20ExtensionStakeLp.UnstakeNotRequested.selector);
+        vm.expectRevert(
+            ILOVE20ExtensionAutoScoreStake.UnstakeNotRequested.selector
+        );
         extension.withdraw();
     }
 
@@ -557,7 +570,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(
-            ILOVE20ExtensionStakeLp.NotEnoughWaitingPhases.selector
+            ILOVE20ExtensionAutoScoreStake.NotEnoughWaitingPhases.selector
         );
         extension.withdraw();
     }
