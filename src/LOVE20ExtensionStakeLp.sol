@@ -21,10 +21,10 @@ import {
 } from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
 import {
     IERC20
-} from "@core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+} from "@extension/lib/core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {
     IUniswapV2Pair
-} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
+} from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
 contract LOVE20ExtensionStakeLp is
     LOVE20ExtensionAutoScoreStake,

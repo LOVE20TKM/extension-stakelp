@@ -25,7 +25,7 @@ import {
 import {LOVE20ExtensionCenter} from "@extension/src/LOVE20ExtensionCenter.sol";
 import {
     IUniswapV2Pair
-} from "@core/src/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
+} from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
 // Import mock contracts
 import {MockERC20} from "./mocks/MockERC20.sol";

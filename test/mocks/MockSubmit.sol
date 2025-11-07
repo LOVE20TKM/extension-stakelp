@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import {ActionInfo} from "@core/src/interfaces/ILOVE20Submit.sol";
+import {ActionInfo} from "@core/interfaces/ILOVE20Submit.sol";
 
 /**
  * @title MockSubmit

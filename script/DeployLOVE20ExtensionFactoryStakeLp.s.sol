@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import "@core/script/BaseScript.sol";
+import "@extension/lib/core/script/BaseScript.sol";
 import {LOVE20ExtensionFactoryStakeLp} from "../src/LOVE20ExtensionFactoryStakeLp.sol";
 
 /**
