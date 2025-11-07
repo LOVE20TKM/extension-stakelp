@@ -260,7 +260,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_JoinedValue() public {
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         // joinedValue should return tokenAddress amount, not LP token amount
         // Get actual LP supply after stake (stake transfers LP tokens to extension)
@@ -283,10 +283,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_JoinedValueByAccount() public {
         vm.prank(user1);
-        extension.stake(50e18);
+        extension.stake(50e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         // joinedValueByAccount should return tokenAddress amount, not LP token amount
         // Get actual LP supply after both stakes
@@ -316,7 +316,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScores_DirectCall_SingleUser() public {
         // Setup: user1 stakes 100e18 LP
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         // Direct call to calculateScores
         (uint256 totalScore, uint256[] memory scores) = extension
@@ -345,13 +345,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScores_DirectCall_MultipleUsers() public {
         // Setup: multiple users stake different amounts
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18);
+        extension.stake(200e18, new string[](0));
 
         vm.prank(user3);
-        extension.stake(300e18);
+        extension.stake(300e18, new string[](0));
 
         // Direct call to calculateScores
         (uint256 totalScore, uint256[] memory scores) = extension
@@ -374,7 +374,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScores_LpRatioIsLimiting() public {
         // Test where user has less LP ratio than gov ratio
         vm.prank(user1);
-        extension.stake(50e18);
+        extension.stake(50e18, new string[](0));
 
         // Total LP: 1600e18, User LP: 50e18
         // LP ratio: (50e18 * 1000000) / 1600e18 = 31250
@@ -392,10 +392,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScore_DirectCall_ExistingAccount() public {
         // Setup: stake with user1
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18);
+        extension.stake(200e18, new string[](0));
 
         // Direct call to calculateScore for user1
         (uint256 total, uint256 score) = extension.calculateScore(user1);
@@ -413,10 +413,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScore_DirectCall_NonExistentAccount() public {
         // Setup: stake with user1 and user2
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18);
+        extension.stake(200e18, new string[](0));
 
         // Direct call to calculateScore for user3 (who hasn't staked)
         (uint256 total, uint256 score) = extension.calculateScore(user3);
@@ -430,13 +430,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScore_DirectCall_MultipleUsers() public {
         // Setup: multiple users stake
         vm.prank(user1);
-        extension.stake(100e18);
+        extension.stake(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18);
+        extension.stake(200e18, new string[](0));
 
         vm.prank(user3);
-        extension.stake(300e18);
+        extension.stake(300e18, new string[](0));
 
         // Test each user's score
         (uint256 total1, uint256 score1) = extension.calculateScore(user1);
@@ -481,7 +481,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_ScoreCalculation_WithGovRatioMultiplier() public {
         // Test LP-specific scoring with govRatioMultiplier
         vm.prank(user1);
-        extension.stake(50e18);
+        extension.stake(50e18, new string[](0));
 
         // Set gov votes
         stake.setValidGovVotes(address(token), user1, 10e18);
