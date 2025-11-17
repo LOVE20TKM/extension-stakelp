@@ -3,7 +3,7 @@
 network=$1
 
 echo "========================================="
-echo "  One-Click Deploy Extension Factory StakeLp"
+echo "  One-Click Deploy Extension Factory Lp"
 echo "  Network: $network"
 echo "========================================="
 echo ""
@@ -17,17 +17,17 @@ source 00_init.sh $network || {
 echo -e "\033[32m✓\033[0m Environment initialized"
 echo ""
 
-# Step 2: Deploy LOVE20ExtensionFactoryStakeLp
-echo "[Step 2/4] Deploying LOVE20ExtensionFactoryStakeLp..."
-forge_script_deploy_extension_factory_stakelp || {
+# Step 2: Deploy LOVE20ExtensionFactoryLp
+echo "[Step 2/4] Deploying LOVE20ExtensionFactoryLp..."
+forge_script_deploy_extension_factory_lp || {
     echo -e "\033[31mError:\033[0m Deployment failed"
     return 1
 }
 echo ""
 
 # Step 3: Load deployed address
-source $network_dir/address.extension.factory.stakelp.params
-echo -e "\033[32m✓\033[0m Extension Factory StakeLp deployed at: $extensionFactoryStakeLpAddress"
+source $network_dir/address.extension.factory.lp.params
+echo -e "\033[32m✓\033[0m Extension Factory Lp deployed at: $extensionFactoryLpAddress"
 echo ""
 
 # Step 4: Verify contract (if applicable)
@@ -51,7 +51,7 @@ echo ""
 echo "========================================="
 echo -e "\033[32m✓\033[0m Deployment completed successfully!"
 echo "========================================="
-echo "Extension Factory StakeLp Address: $extensionFactoryStakeLpAddress"
+echo "Extension Factory Lp Address: $extensionFactoryLpAddress"
 echo "Network: $network"
 echo "========================================="
 

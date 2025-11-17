@@ -1,6 +1,6 @@
-# LOVE20 Extension Factory StakeLp Deployment Scripts
+# LOVE20 Extension Factory Lp Deployment Scripts
 
-一键部署和验证 LOVE20ExtensionFactoryStakeLp 合约的脚本集合。
+一键部署和验证 LOVE20ExtensionFactoryLp 合约的脚本集合。
 
 ## 📁 脚本说明
 
@@ -20,7 +20,7 @@
 自动完成以下步骤：
 
 1. 初始化环境
-2. 部署 LOVE20ExtensionFactoryStakeLp 合约
+2. 部署 LOVE20ExtensionFactoryLp 合约
 3. 验证合约（仅 thinkium70001 网络）
 4. 运行部署检查
 
@@ -36,7 +36,7 @@
 
 **部署验证脚本**
 
-检查 ExtensionFactoryStakeLp 合约的参数是否正确：
+检查 ExtensionFactoryLp 合约的参数是否正确：
 
 - center address 是否正确设置
 
@@ -71,10 +71,10 @@ cd script/deploy
 source 00_init.sh <network>
 
 # Step 2: 部署合约
-forge_script_deploy_extension_factory_stakelp
+forge_script_deploy_extension_factory_lp
 
 # Step 3: 加载部署地址
-source $network_dir/address.extension.factory.stakelp.params
+source $network_dir/address.extension.factory.lp.params
 
 # Step 4: 验证合约（可选，仅 thinkium 网络）
 source 03_verify.sh
@@ -102,13 +102,13 @@ source 99_check.sh
 部署成功后，合约地址会写入：
 
 ```
-script/network/<network>/address.extension.factory.stakelp.params
+script/network/<network>/address.extension.factory.lp.params
 ```
 
 内容格式：
 
 ```bash
-extensionFactoryStakeLpAddress=0x...
+extensionFactoryLpAddress=0x...
 ```
 
 ## 🔍 查看可用网络
@@ -132,21 +132,21 @@ ls ../network/
 
 ```
 =========================================
-  One-Click Deploy Extension Factory StakeLp
+  One-Click Deploy Extension Factory Lp
   Network: anvil
 =========================================
 
 [Step 1/4] Initializing environment...
 ✓ Environment initialized
 
-[Step 2/4] Deploying LOVE20ExtensionFactoryStakeLp...
-✓ Extension Factory StakeLp deployed at: 0x59b670e9fA9D0A427751Af201D676719a970857b
+[Step 2/4] Deploying LOVE20ExtensionFactoryLp...
+✓ Extension Factory Lp deployed at: 0x59b670e9fA9D0A427751Af201D676719a970857b
 
 [Step 3/4] Skipping contract verification (not a thinkium network)
 
 [Step 4/4] Running deployment checks...
 =========================================
-Verifying Extension Factory StakeLp Configuration
+Verifying Extension Factory Lp Configuration
 =========================================
 ✓ Center address
   Expected: 0x5fbdb2315678afecb367f032d93f642f64180aa3
@@ -159,7 +159,7 @@ Verifying Extension Factory StakeLp Configuration
 =========================================
 ✓ Deployment completed successfully!
 =========================================
-Extension Factory StakeLp Address: 0x59b670e9fA9D0A427751Af201D676719a970857b
+Extension Factory Lp Address: 0x59b670e9fA9D0A427751Af201D676719a970857b
 Network: anvil
 =========================================
 ```
@@ -192,7 +192,7 @@ Error: extensionCenterAddress not found
 
 ## 📚 相关文件
 
-- 部署脚本：`script/DeployLOVE20ExtensionFactoryStakeLp.s.sol`
-- 合约源码：`src/LOVE20ExtensionFactoryStakeLp.sol`
-- Extension 合约：`src/LOVE20ExtensionStakeLp.sol`
+- 部署脚本：`script/DeployLOVE20ExtensionFactoryLp.s.sol`
+- 合约源码：`src/LOVE20ExtensionFactoryLp.sol`
+- Extension 合约：`src/LOVE20ExtensionLp.sol`
 - Foundry 配置：`foundry.toml`

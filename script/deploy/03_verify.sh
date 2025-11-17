@@ -10,9 +10,9 @@ if [ -z "$RPC_URL" ]; then
     source 00_init.sh $network
 fi
 
-# Ensure extension factory stakelp address is loaded
-if [ -z "$extensionFactoryStakeLpAddress" ]; then
-    source $network_dir/address.extension.factory.stakelp.params
+# Ensure extension factory lp address is loaded
+if [ -z "$extensionFactoryLpAddress" ]; then
+    source $network_dir/address.extension.factory.lp.params
 fi
 
 if [ -z "$extensionCenterAddress" ]; then
@@ -45,7 +45,7 @@ verify_contract(){
 }
 echo "verify_contract() loaded"
 
-# Verify LOVE20ExtensionFactoryStakeLp
+# Verify LOVE20ExtensionFactoryLp
 constructor_args=$(cast abi-encode "constructor(address)" $extensionCenterAddress)
-verify_contract $extensionFactoryStakeLpAddress "LOVE20ExtensionFactoryStakeLp" "src/LOVE20ExtensionFactoryStakeLp.sol" "$constructor_args"
+verify_contract $extensionFactoryLpAddress "LOVE20ExtensionFactoryLp" "src/LOVE20ExtensionFactoryLp.sol" "$constructor_args"
 

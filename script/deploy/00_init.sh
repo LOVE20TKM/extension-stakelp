@@ -107,9 +107,9 @@ forge_script() {
 }
 echo "forge_script() loaded"
 
-forge_script_deploy_extension_factory_stakelp() {
-  forge_script ../DeployLOVE20ExtensionFactoryStakeLp.s.sol:DeployLOVE20ExtensionFactoryStakeLp --sig "run()"
+forge_script_deploy_extension_factory_lp() {
+  forge_script ../DeployLOVE20ExtensionFactoryLp.s.sol:DeployLOVE20ExtensionFactoryLp --sig "run()"
 }
 
-echo "forge_script_deploy_extension_factory_stakelp() loaded"
+echo "forge_script_deploy_extension_factory_lp() loaded"
 

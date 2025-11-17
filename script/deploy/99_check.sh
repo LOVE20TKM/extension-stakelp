@@ -1,12 +1,12 @@
 #!/bin/bash
 
 echo "========================================="
-echo "Verifying Extension Factory StakeLp Configuration"
+echo "Verifying Extension Factory Lp Configuration"
 echo "========================================="
 
-if [ -z "$extensionFactoryStakeLpAddress" ]; then
-    echo -e "\033[31mError:\033[0m extensionFactoryStakeLpAddress not set"
-    echo "Please run: source ../network/$network/address.extension.factory.stakelp.params"
+if [ -z "$extensionFactoryLpAddress" ]; then
+    echo -e "\033[31mError:\033[0m extensionFactoryLpAddress not set"
+    echo "Please run: source ../network/$network/address.extension.factory.lp.params"
     return 1
 fi
 
@@ -16,7 +16,7 @@ passed_checks=0
 
 # Check 1: Verify center address
 total_checks=$((total_checks + 1))
-actual_center=$(cast call $extensionFactoryStakeLpAddress "center()(address)" --rpc-url $RPC_URL)
+actual_center=$(cast call $extensionFactoryLpAddress "center()(address)" --rpc-url $RPC_URL)
 if check_equal "Center address" "$extensionCenterAddress" "$actual_center"; then
     passed_checks=$((passed_checks + 1))
 fi

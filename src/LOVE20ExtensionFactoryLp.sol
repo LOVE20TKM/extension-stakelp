@@ -27,7 +27,7 @@ contract LOVE20ExtensionFactoryLp is
     constructor(address _center) LOVE20ExtensionFactoryBase(_center) {}
 
     // ============================================
-    // StakeLp FACTORY FUNCTIONS
+    // Lp FACTORY FUNCTIONS
     // ============================================
     function createExtension(
         address joinTokenAddress,
