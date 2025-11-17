@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import {ILOVE20ExtensionFactoryStakeLp} from "./interface/ILOVE20ExtensionFactoryStakeLp.sol";
-import {LOVE20ExtensionFactoryBase} from "@extension/src/LOVE20ExtensionFactoryBase.sol";
-import {LOVE20ExtensionStakeLp} from "./LOVE20ExtensionStakeLp.sol";
+import {
+    ILOVE20ExtensionFactoryLp
+} from "./interface/ILOVE20ExtensionFactoryLp.sol";
+import {
+    LOVE20ExtensionFactoryBase
+} from "@extension/src/LOVE20ExtensionFactoryBase.sol";
+import {LOVE20ExtensionLp} from "./LOVE20ExtensionLp.sol";
 
-contract LOVE20ExtensionFactoryStakeLp is
+contract LOVE20ExtensionFactoryLp is
     LOVE20ExtensionFactoryBase,
-    ILOVE20ExtensionFactoryStakeLp
+    ILOVE20ExtensionFactoryLp
 {
     // ============================================
     // STATE VARIABLES
@@ -26,21 +30,21 @@ contract LOVE20ExtensionFactoryStakeLp is
     // StakeLp FACTORY FUNCTIONS
     // ============================================
     function createExtension(
-        address stakeTokenAddress,
-        uint256 waitingPhases,
+        address joinTokenAddress,
+        uint256 waitingBlocks,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     ) external returns (address extension) {
         // Validate parameters
-        if (stakeTokenAddress == address(0)) {
-            revert InvalidStakeTokenAddress();
+        if (joinTokenAddress == address(0)) {
+            revert InvalidJoinTokenAddress();
         }
 
         extension = address(
-            new LOVE20ExtensionStakeLp(
+            new LOVE20ExtensionLp(
                 address(this),
-                stakeTokenAddress,
-                waitingPhases,
+                joinTokenAddress,
+                waitingBlocks,
                 govRatioMultiplier,
                 minGovVotes
             )
@@ -48,8 +52,8 @@ contract LOVE20ExtensionFactoryStakeLp is
 
         // Store extension parameters
         _extensionParams[extension] = ExtensionParams({
-            stakeTokenAddress: stakeTokenAddress,
-            waitingPhases: waitingPhases,
+            joinTokenAddress: joinTokenAddress,
+            waitingBlocks: waitingBlocks,
             govRatioMultiplier: govRatioMultiplier,
             minGovVotes: minGovVotes
         });
@@ -59,8 +63,8 @@ contract LOVE20ExtensionFactoryStakeLp is
 
         emit ExtensionCreated(
             extension,
-            stakeTokenAddress,
-            waitingPhases,
+            joinTokenAddress,
+            waitingBlocks,
             govRatioMultiplier,
             minGovVotes
         );
@@ -68,23 +72,23 @@ contract LOVE20ExtensionFactoryStakeLp is
         return extension;
     }
 
-    /// @inheritdoc ILOVE20ExtensionFactoryStakeLp
+    /// @inheritdoc ILOVE20ExtensionFactoryLp
     function extensionParams(
         address extension
     )
         external
         view
         returns (
-            address stakeTokenAddress,
-            uint256 waitingPhases,
+            address joinTokenAddress,
+            uint256 waitingBlocks,
             uint256 govRatioMultiplier,
             uint256 minGovVotes
         )
     {
         ExtensionParams memory params = _extensionParams[extension];
         return (
-            params.stakeTokenAddress,
-            params.waitingPhases,
+            params.joinTokenAddress,
+            params.waitingBlocks,
             params.govRatioMultiplier,
             params.minGovVotes
         );

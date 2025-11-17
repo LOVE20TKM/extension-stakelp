@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import {ILOVE20ExtensionFactory} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
+import {
+    ILOVE20ExtensionFactory
+} from "@extension/src/interface/ILOVE20ExtensionFactory.sol";
 
-interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
+interface ILOVE20ExtensionFactoryLp is ILOVE20ExtensionFactory {
     /// @notice Extension creation parameters
     struct ExtensionParams {
-        address stakeTokenAddress;
-        uint256 waitingPhases;
-        uint256 govRatioMultiplier;
-        uint256 minGovVotes;
+        address joinTokenAddress; // Token address for joining actions
+        uint256 waitingBlocks; // Number of blocks to wait before unstaking
+        uint256 govRatioMultiplier; // Governance ratio multiplier
+        uint256 minGovVotes; // Minimum governance votes required
     }
 
     // ============================================
@@ -17,7 +19,7 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     // ============================================
 
     error InvalidTokenAddress();
-    error InvalidStakeTokenAddress();
+    error InvalidJoinTokenAddress();
 
     // ============================================
     // EVENTS
@@ -25,15 +27,15 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
 
     event ExtensionCreated(
         address extension,
-        address stakeTokenAddress,
-        uint256 waitingPhases,
+        address joinTokenAddress,
+        uint256 waitingBlocks,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     );
 
     function createExtension(
-        address stakeTokenAddress,
-        uint256 waitingPhases,
+        address joinTokenAddress,
+        uint256 waitingBlocks,
         uint256 govRatioMultiplier,
         uint256 minGovVotes
     ) external returns (address extension);
@@ -42,8 +44,8 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
     /// @dev tokenAddress and actionId are read from the extension contract itself
     ///      (only available after initialization), other params are stored at creation
     /// @param extension The extension address
-    /// @return stakeTokenAddress The staking token address
-    /// @return waitingPhases The waiting phases for unstaking
+    /// @return joinTokenAddress The join token address for participating in actions
+    /// @return waitingBlocks The waiting blocks for unstaking
     /// @return govRatioMultiplier The governance ratio multiplier
     /// @return minGovVotes The minimum governance votes required
     function extensionParams(
@@ -52,8 +54,8 @@ interface ILOVE20ExtensionFactoryStakeLp is ILOVE20ExtensionFactory {
         external
         view
         returns (
-            address stakeTokenAddress,
-            uint256 waitingPhases,
+            address joinTokenAddress,
+            uint256 waitingBlocks,
             uint256 govRatioMultiplier,
             uint256 minGovVotes
         );

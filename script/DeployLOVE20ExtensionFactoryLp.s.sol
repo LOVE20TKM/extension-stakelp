@@ -2,18 +2,18 @@
 pragma solidity =0.8.17;
 
 import "@extension/lib/core/script/BaseScript.sol";
-import {LOVE20ExtensionFactoryStakeLp} from "../src/LOVE20ExtensionFactoryStakeLp.sol";
+import {LOVE20ExtensionFactoryLp} from "../src/LOVE20ExtensionFactoryLp.sol";
 
 /**
- * @title DeployLOVE20ExtensionFactoryStakeLp
- * @notice Script for deploying LOVE20ExtensionFactoryStakeLp contract
- * @dev Reads extensionCenterAddress from address.extension.center.params and writes deployed address to address.extension.factory.stakelp.params
+ * @title DeployLOVE20ExtensionFactoryLp
+ * @notice Script for deploying LOVE20ExtensionFactoryLp contract
+ * @dev Reads extensionCenterAddress from address.extension.center.params and writes deployed address to address.extension.factory.lp.params
  */
-contract DeployLOVE20ExtensionFactoryStakeLp is BaseScript {
-    address public extensionFactoryStakeLpAddress;
+contract DeployLOVE20ExtensionFactoryLp is BaseScript {
+    address public extensionFactoryLpAddress;
 
     /**
-     * @notice Deploy LOVE20ExtensionFactoryStakeLp with extensionCenterAddress from address.extension.center.params
+     * @notice Deploy LOVE20ExtensionFactoryLp with extensionCenterAddress from address.extension.center.params
      * @dev The required center address is read from the network's address.extension.center.params file
      */
     function run() external {
@@ -29,18 +29,18 @@ contract DeployLOVE20ExtensionFactoryStakeLp is BaseScript {
             "extensionCenterAddress not found"
         );
 
-        // Deploy LOVE20ExtensionFactoryStakeLp
+        // Deploy LOVE20ExtensionFactoryLp
         vm.startBroadcast();
-        extensionFactoryStakeLpAddress = address(
-            new LOVE20ExtensionFactoryStakeLp(extensionCenterAddress)
+        extensionFactoryLpAddress = address(
+            new LOVE20ExtensionFactoryLp(extensionCenterAddress)
         );
         vm.stopBroadcast();
 
         // Log deployment info if enabled
         if (!hideLogs) {
             console.log(
-                "LOVE20ExtensionFactoryStakeLp deployed at:",
-                extensionFactoryStakeLpAddress
+                "LOVE20ExtensionFactoryLp deployed at:",
+                extensionFactoryLpAddress
             );
             console.log("Constructor parameters:");
             console.log("  extensionCenterAddress:", extensionCenterAddress);
@@ -48,9 +48,9 @@ contract DeployLOVE20ExtensionFactoryStakeLp is BaseScript {
 
         // Update address file
         updateParamsFile(
-            "address.extension.factory.stakelp.params",
-            "extensionFactoryStakeLpAddress",
-            vm.toString(extensionFactoryStakeLpAddress)
+            "address.extension.factory.lp.params",
+            "extensionFactoryLpAddress",
+            vm.toString(extensionFactoryLpAddress)
         );
     }
 }

@@ -2,14 +2,14 @@
 pragma solidity =0.8.17;
 
 import {
-    ILOVE20ExtensionAutoScoreStake
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
+    ILOVE20ExtensionAutoScoreJoin
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
 
-interface ILOVE20ExtensionStakeLp is ILOVE20ExtensionAutoScoreStake {
-    // StakeLp-specific errors (stake-related errors are in ILOVE20ExtensionAutoScoreStake)
-    error InvalidStakeTokenAddress();
+interface ILOVE20ExtensionLp is ILOVE20ExtensionAutoScoreJoin {
+    // StakeLp-specific errors (join-related errors are in ILOVE20ExtensionAutoScoreJoin)
+    error InvalidJoinTokenAddress();
 
-    // Stake-related events and functions are inherited from ILOVE20ExtensionAutoScoreStake
+    // Join-related events and functions are inherited from ILOVE20ExtensionAutoScoreJoin
 
     // StakeLp-specific config
     function govRatioMultiplier() external view returns (uint256);

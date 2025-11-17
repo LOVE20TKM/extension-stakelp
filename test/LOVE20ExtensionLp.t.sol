@@ -2,19 +2,19 @@
 pragma solidity =0.8.17;
 
 import {Test, console} from "forge-std/Test.sol";
-import {LOVE20ExtensionStakeLp} from "../src/LOVE20ExtensionStakeLp.sol";
+import {LOVE20ExtensionLp} from "../src/LOVE20ExtensionLp.sol";
 import {
-    LOVE20ExtensionFactoryStakeLp
-} from "../src/LOVE20ExtensionFactoryStakeLp.sol";
+    LOVE20ExtensionFactoryLp
+} from "../src/LOVE20ExtensionFactoryLp.sol";
 import {
-    ILOVE20ExtensionStakeLp
-} from "../src/interface/ILOVE20ExtensionStakeLp.sol";
+    ILOVE20ExtensionLp
+} from "../src/interface/ILOVE20ExtensionLp.sol";
 import {
-    ILOVE20ExtensionAutoScoreStake
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
+    ILOVE20ExtensionAutoScoreJoin
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
 import {
-    ILOVE20ExtensionFactoryStakeLp
-} from "../src/interface/ILOVE20ExtensionFactoryStakeLp.sol";
+    ILOVE20ExtensionFactoryLp
+} from "../src/interface/ILOVE20ExtensionFactoryLp.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {
     ILOVE20ExtensionFactory
@@ -41,21 +41,21 @@ import {MockVote} from "./mocks/MockVote.sol";
 import {MockRandom} from "./mocks/MockRandom.sol";
 
 /**
- * @title LOVE20ExtensionStakeLp Test Suite
+ * @title LOVE20ExtensionLp Test Suite
  * @notice Tests for LP-specific functionality
- * @dev Basic stake/unstake/withdraw tests are covered in lib/extension/test/LOVE20ExtensionSimpleStake.t.sol
+ * @dev Basic join/withdraw tests are covered in lib/extension/test/LOVE20ExtensionSimpleJoin.t.sol
  *      This test suite focuses on LP-specific features:
  *      - LP token validation
  *      - LP to token conversion (joinedValue)
  *      - govRatioMultiplier in score calculation
  *      - Factory with LP-specific parameters
  */
-contract LOVE20ExtensionStakeLpTest is Test {
-    LOVE20ExtensionFactoryStakeLp public factory;
-    LOVE20ExtensionStakeLp public extension;
+contract LOVE20ExtensionLpTest is Test {
+    LOVE20ExtensionFactoryLp public factory;
+    LOVE20ExtensionLp public extension;
     LOVE20ExtensionCenter public center;
     MockERC20 public token;
-    MockUniswapV2Pair public stakeToken;
+    MockUniswapV2Pair public joinToken;
     MockStake public stake;
     MockJoin public join;
     MockVerify public verify;
@@ -70,7 +70,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     address public user3 = address(0x3);
 
     uint256 constant ACTION_ID = 1;
-    uint256 constant WAITING_PHASES = 7;
+    uint256 constant WAITING_BLOCKS = 7;
     uint256 constant GOV_RATIO_MULTIPLIER = 2;
     uint256 constant MIN_GOV_VOTES = 1e18;
 
@@ -80,7 +80,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         MockUniswapV2Factory uniswapFactory = new MockUniswapV2Factory();
         // Create a Pair for token and another token (e.g., WETH)
         MockERC20 otherToken = new MockERC20();
-        stakeToken = MockUniswapV2Pair(
+        joinToken = MockUniswapV2Pair(
             uniswapFactory.createPair(address(token), address(otherToken))
         );
         stake = new MockStake();
@@ -106,13 +106,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
         );
 
         // Deploy factory
-        factory = new LOVE20ExtensionFactoryStakeLp(address(center));
+        factory = new LOVE20ExtensionFactoryLp(address(center));
 
         // Create extension
-        extension = LOVE20ExtensionStakeLp(
+        extension = LOVE20ExtensionLp(
             factory.createExtension(
-                address(stakeToken),
-                WAITING_PHASES,
+                address(joinToken),
+                WAITING_BLOCKS,
                 GOV_RATIO_MULTIPLIER,
                 MIN_GOV_VOTES
             )
@@ -132,28 +132,28 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ACTION_ID
         );
 
-        // Setup users with stake tokens
-        stakeToken.mint(user1, 100e18);
-        stakeToken.mint(user2, 200e18);
-        stakeToken.mint(user3, 300e18);
+        // Setup users with join tokens
+        joinToken.mint(user1, 100e18);
+        joinToken.mint(user2, 200e18);
+        joinToken.mint(user3, 300e18);
 
-        // Set initial total supply for stakeToken (for ratio calculations)
+        // Set initial total supply for joinToken (for ratio calculations)
         // Total supply = initial minted amounts + any additional
-        stakeToken.mint(address(0x1), 1000e18); // Add to total supply for ratio calculation
+        joinToken.mint(address(0x1), 1000e18); // Add to total supply for ratio calculation
 
         // Set Pair reserves for LP to token conversion
         // Set reserves: token reserves = 10000e18, otherToken reserves = 10000e18
         // This allows LP to token conversion to work correctly
         // The actual mapping (token0/token1) will be determined by pair.token0() in the contract
-        stakeToken.setReserves(10000e18, 10000e18);
+        joinToken.setReserves(10000e18, 10000e18);
 
-        // Approve extension to spend stake tokens
+        // Approve extension to spend join tokens
         vm.prank(user1);
-        stakeToken.approve(address(extension), type(uint256).max);
+        joinToken.approve(address(extension), type(uint256).max);
         vm.prank(user2);
-        stakeToken.approve(address(extension), type(uint256).max);
+        joinToken.approve(address(extension), type(uint256).max);
         vm.prank(user3);
-        stakeToken.approve(address(extension), type(uint256).max);
+        joinToken.approve(address(extension), type(uint256).max);
 
         // Setup gov votes
         stake.setGovVotesNum(address(token), 1000e18);
@@ -169,13 +169,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
     // Initialization Tests (LP-specific validation)
     // ============================================
 
-    function test_Initialize_RevertIfInvalidStakeTokenAddress() public {
-        // Deploy new extension with invalid stakeToken (not a Pair)
+    function test_Initialize_RevertIfInvalidJoinTokenAddress() public {
+        // Deploy new extension with invalid joinToken (not a Pair)
         // Must create through factory to register it
         MockERC20 invalidStakeToken = new MockERC20();
         address newExtensionAddress = factory.createExtension(
             address(invalidStakeToken),
-            WAITING_PHASES,
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
@@ -214,7 +214,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // Must create through factory to register it
         address newExtensionAddress = factory.createExtension(
             address(wrongPair),
-            WAITING_PHASES,
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
@@ -244,8 +244,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
         // Test LP-specific parameter
         assertEq(extension.govRatioMultiplier(), GOV_RATIO_MULTIPLIER);
         // Basic immutable variables are tested in base contract
-        assertEq(extension.stakeTokenAddress(), address(stakeToken));
-        assertEq(extension.waitingPhases(), WAITING_PHASES);
+        assertEq(extension.joinTokenAddress(), address(joinToken));
+        assertEq(extension.waitingBlocks(), WAITING_BLOCKS);
     }
 
     function test_IsJoinedValueCalculated() public view {
@@ -256,17 +256,17 @@ contract LOVE20ExtensionStakeLpTest is Test {
     // ============================================
     // LP to Token Conversion Tests (joinedValue)
     // ============================================
-    // Note: Basic stake/unstake/withdraw functionality is tested in base contract
+    // Note: Basic join/unjoin/withdraw functionality is tested in base contract
 
     function test_JoinedValue() public {
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         // joinedValue should return tokenAddress amount, not LP token amount
-        // Get actual LP supply after stake (stake transfers LP tokens to extension)
-        IUniswapV2Pair pair = IUniswapV2Pair(address(stakeToken));
+        // Get actual LP supply after join (join transfers LP tokens to extension)
+        IUniswapV2Pair pair = IUniswapV2Pair(address(joinToken));
         uint256 totalLpSupply = pair.totalSupply();
-        uint256 stakedLpAmount = 100e18;
+        uint256 joindLpAmount = 100e18;
 
         // Get token reserve (token is either token0 or token1)
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
@@ -275,22 +275,22 @@ contract LOVE20ExtensionStakeLpTest is Test {
             ? uint256(reserve0)
             : uint256(reserve1);
 
-        // Calculate expected token amount: (stakedLpAmount * tokenReserve) / totalLpSupply
-        uint256 expectedTokenAmount = (stakedLpAmount * tokenReserve) /
+        // Calculate expected token amount: (joindLpAmount * tokenReserve) / totalLpSupply
+        uint256 expectedTokenAmount = (joindLpAmount * tokenReserve) /
             totalLpSupply;
         assertEq(extension.joinedValue(), expectedTokenAmount);
     }
 
     function test_JoinedValueByAccount() public {
         vm.prank(user1);
-        extension.stake(50e18, new string[](0));
+        extension.join(50e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         // joinedValueByAccount should return tokenAddress amount, not LP token amount
-        // Get actual LP supply after both stakes
-        IUniswapV2Pair pair = IUniswapV2Pair(address(stakeToken));
+        // Get actual LP supply after both joins
+        IUniswapV2Pair pair = IUniswapV2Pair(address(joinToken));
         uint256 totalLpSupply = pair.totalSupply();
 
         // Get token reserve (token is either token0 or token1)
@@ -314,9 +314,9 @@ contract LOVE20ExtensionStakeLpTest is Test {
     // This section tests LP-specific scoring logic with govRatioMultiplier
 
     function test_CalculateScores_DirectCall_SingleUser() public {
-        // Setup: user1 stakes 100e18 LP
+        // Setup: user1 joins 100e18 LP
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         // Direct call to calculateScores
         (uint256 totalScore, uint256[] memory scores) = extension
@@ -343,15 +343,15 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_CalculateScores_DirectCall_MultipleUsers() public {
-        // Setup: multiple users stake different amounts
+        // Setup: multiple users join different amounts
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18, new string[](0));
+        extension.join(200e18, new string[](0));
 
         vm.prank(user3);
-        extension.stake(300e18, new string[](0));
+        extension.join(300e18, new string[](0));
 
         // Direct call to calculateScores
         (uint256 totalScore, uint256[] memory scores) = extension
@@ -374,7 +374,7 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_CalculateScores_LpRatioIsLimiting() public {
         // Test where user has less LP ratio than gov ratio
         vm.prank(user1);
-        extension.stake(50e18, new string[](0));
+        extension.join(50e18, new string[](0));
 
         // Total LP: 1600e18, User LP: 50e18
         // LP ratio: (50e18 * 1000000) / 1600e18 = 31250
@@ -390,12 +390,12 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_CalculateScore_DirectCall_ExistingAccount() public {
-        // Setup: stake with user1
+        // Setup: join with user1
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18, new string[](0));
+        extension.join(200e18, new string[](0));
 
         // Direct call to calculateScore for user1
         (uint256 total, uint256 score) = extension.calculateScore(user1);
@@ -411,14 +411,14 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_CalculateScore_DirectCall_NonExistentAccount() public {
-        // Setup: stake with user1 and user2
+        // Setup: join with user1 and user2
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18, new string[](0));
+        extension.join(200e18, new string[](0));
 
-        // Direct call to calculateScore for user3 (who hasn't staked)
+        // Direct call to calculateScore for user3 (who hasn't joind)
         (uint256 total, uint256 score) = extension.calculateScore(user3);
 
         // Verify results
@@ -428,15 +428,15 @@ contract LOVE20ExtensionStakeLpTest is Test {
     }
 
     function test_CalculateScore_DirectCall_MultipleUsers() public {
-        // Setup: multiple users stake
+        // Setup: multiple users join
         vm.prank(user1);
-        extension.stake(100e18, new string[](0));
+        extension.join(100e18, new string[](0));
 
         vm.prank(user2);
-        extension.stake(200e18, new string[](0));
+        extension.join(200e18, new string[](0));
 
         vm.prank(user3);
-        extension.stake(300e18, new string[](0));
+        extension.join(300e18, new string[](0));
 
         // Test each user's score
         (uint256 total1, uint256 score1) = extension.calculateScore(user1);
@@ -474,14 +474,14 @@ contract LOVE20ExtensionStakeLpTest is Test {
     // This test verifies that LP-specific scoring integrates correctly with rewards
 
     function test_JoinedValue_ZeroWhenNoStakes() public view {
-        // LP-specific: verify joinedValue is 0 when no stakes
+        // LP-specific: verify joinedValue is 0 when no joins
         assertEq(extension.joinedValue(), 0);
     }
 
     function test_ScoreCalculation_WithGovRatioMultiplier() public {
         // Test LP-specific scoring with govRatioMultiplier
         vm.prank(user1);
-        extension.stake(50e18, new string[](0));
+        extension.join(50e18, new string[](0));
 
         // Set gov votes
         stake.setValidGovVotes(address(token), user1, 10e18);
@@ -499,8 +499,8 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_Factory_CreateExtension() public {
         address newExtension = factory.createExtension(
-            address(stakeToken),
-            WAITING_PHASES,
+            address(joinToken),
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
@@ -511,10 +511,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_Factory_Extensions() public {
         // Create multiple extensions
-        MockERC20 stakeToken2 = new MockERC20();
+        MockERC20 joinToken2 = new MockERC20();
         address extension2 = factory.createExtension(
-            address(stakeToken2),
-            WAITING_PHASES,
+            address(joinToken2),
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
@@ -527,10 +527,10 @@ contract LOVE20ExtensionStakeLpTest is Test {
 
     function test_Factory_ExtensionsAtIndex() public {
         // Create another extension
-        MockERC20 stakeToken2 = new MockERC20();
+        MockERC20 joinToken2 = new MockERC20();
         address extension2 = factory.createExtension(
-            address(stakeToken2),
-            WAITING_PHASES,
+            address(joinToken2),
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );
@@ -542,18 +542,18 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_Factory_ExtensionParams() public view {
         // Extension is already initialized in setUp via center.initializeExtension
         (
-            address stakeTokenAddr,
-            uint256 waitingPhases,
+            address joinTokenAddr,
+            uint256 waitingBlocks,
             uint256 govRatioMult,
             uint256 minGovVotesVal
         ) = factory.extensionParams(address(extension));
 
         assertEq(
-            stakeTokenAddr,
-            address(stakeToken),
-            "stakeTokenAddr mismatch"
+            joinTokenAddr,
+            address(joinToken),
+            "joinTokenAddr mismatch"
         );
-        assertEq(waitingPhases, WAITING_PHASES, "waitingPhases mismatch");
+        assertEq(waitingBlocks, WAITING_BLOCKS, "waitingBlocks mismatch");
         assertEq(govRatioMult, GOV_RATIO_MULTIPLIER, "govRatioMult mismatch");
         assertEq(minGovVotesVal, MIN_GOV_VOTES, "minGovVotesVal mismatch");
 
@@ -569,15 +569,15 @@ contract LOVE20ExtensionStakeLpTest is Test {
     function test_Factory_ExtensionParams_NonExistent() public view {
         // Query params for non-existent extension
         (
-            address stakeTokenAddr,
-            uint256 waitingPhases,
+            address joinTokenAddr,
+            uint256 waitingBlocks,
             uint256 govRatioMult,
             uint256 minGovVotesVal
         ) = factory.extensionParams(address(0x999));
 
         // Should return zero values
-        assertEq(stakeTokenAddr, address(0));
-        assertEq(waitingPhases, 0);
+        assertEq(joinTokenAddr, address(0));
+        assertEq(waitingBlocks, 0);
         assertEq(govRatioMult, 0);
         assertEq(minGovVotesVal, 0);
     }
@@ -586,13 +586,13 @@ contract LOVE20ExtensionStakeLpTest is Test {
         assertEq(factory.center(), address(center));
     }
 
-    function test_Factory_RevertIfInvalidStakeTokenAddress() public {
+    function test_Factory_RevertIfInvalidJoinTokenAddress() public {
         vm.expectRevert(
-            ILOVE20ExtensionFactoryStakeLp.InvalidStakeTokenAddress.selector
+            ILOVE20ExtensionFactoryLp.InvalidJoinTokenAddress.selector
         );
         factory.createExtension(
             address(0),
-            WAITING_PHASES,
+            WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES
         );

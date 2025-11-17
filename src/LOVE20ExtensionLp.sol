@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.17;
 
-import {ILOVE20ExtensionStakeLp} from "./interface/ILOVE20ExtensionStakeLp.sol";
+import {ILOVE20ExtensionLp} from "./interface/ILOVE20ExtensionLp.sol";
 import {
-    LOVE20ExtensionAutoScoreStake
-} from "@extension/src/LOVE20ExtensionAutoScoreStake.sol";
+    LOVE20ExtensionAutoScoreJoin
+} from "@extension/src/LOVE20ExtensionAutoScoreJoin.sol";
 import {
     LOVE20ExtensionAutoScore
 } from "@extension/src/LOVE20ExtensionAutoScore.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
 import {
-    ILOVE20ExtensionAutoScoreStake
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreStake.sol";
+    ILOVE20ExtensionAutoScoreJoin
+} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
 import {
     ILOVE20ExtensionAutoScore
 } from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
@@ -26,9 +26,9 @@ import {
     IUniswapV2Pair
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
-contract LOVE20ExtensionStakeLp is
-    LOVE20ExtensionAutoScoreStake,
-    ILOVE20ExtensionStakeLp
+contract LOVE20ExtensionLp is
+    LOVE20ExtensionAutoScoreJoin,
+    ILOVE20ExtensionLp
 {
     // ============================================
     // STATE VARIABLES
@@ -38,15 +38,15 @@ contract LOVE20ExtensionStakeLp is
 
     constructor(
         address factory_,
-        address stakeTokenAddress_,
-        uint256 waitingPhases_,
+        address joinTokenAddress_,
+        uint256 waitingBlocks_,
         uint256 govRatioMultiplier_,
         uint256 minGovVotes_
     )
-        LOVE20ExtensionAutoScoreStake(
+        LOVE20ExtensionAutoScoreJoin(
             factory_,
-            stakeTokenAddress_,
-            waitingPhases_,
+            joinTokenAddress_,
+            waitingBlocks_,
             minGovVotes_
         )
     {
@@ -58,40 +58,36 @@ contract LOVE20ExtensionStakeLp is
         uint256 actionId_
     ) public override(ILOVE20Extension, LOVE20ExtensionBase) {
         super.initialize(tokenAddress_, actionId_);
-        _validateStakeToken();
+        _validateJoinToken();
     }
 
-    function _validateStakeToken() internal view {
+    function _validateJoinToken() internal view {
         address uniswapV2FactoryAddress = ILOVE20ExtensionCenter(center())
             .uniswapV2FactoryAddress();
 
-        try IUniswapV2Pair(stakeTokenAddress).factory() returns (
+        try IUniswapV2Pair(joinTokenAddress).factory() returns (
             address pairFactory
         ) {
             if (pairFactory != uniswapV2FactoryAddress) {
-                revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+                revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
             }
         } catch {
-            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
         }
         address pairToken0;
         address pairToken1;
-        try IUniswapV2Pair(stakeTokenAddress).token0() returns (
-            address token0
-        ) {
+        try IUniswapV2Pair(joinTokenAddress).token0() returns (address token0) {
             pairToken0 = token0;
         } catch {
-            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
         }
-        try IUniswapV2Pair(stakeTokenAddress).token1() returns (
-            address token1
-        ) {
+        try IUniswapV2Pair(joinTokenAddress).token1() returns (address token1) {
             pairToken1 = token1;
         } catch {
-            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
         }
         if (pairToken0 != tokenAddress && pairToken1 != tokenAddress) {
-            revert ILOVE20ExtensionStakeLp.InvalidStakeTokenAddress();
+            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
         }
     }
 
@@ -110,7 +106,7 @@ contract LOVE20ExtensionStakeLp is
             return 0;
         }
 
-        IUniswapV2Pair pair = IUniswapV2Pair(stakeTokenAddress);
+        IUniswapV2Pair pair = IUniswapV2Pair(joinTokenAddress);
 
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         uint256 totalLp = pair.totalSupply();
@@ -128,15 +124,13 @@ contract LOVE20ExtensionStakeLp is
     }
 
     function joinedValue() external view returns (uint256) {
-        return _lpToTokenAmount(totalStakedAmount);
+        return _lpToTokenAmount(totalJoinedAmount);
     }
 
     function joinedValueByAccount(
         address account
     ) external view returns (uint256) {
-        ILOVE20ExtensionAutoScoreStake.StakeInfo storage info = _stakeInfo[
-            account
-        ];
+        ILOVE20ExtensionAutoScoreJoin.JoinInfo memory info = _joinInfo[account];
         return _lpToTokenAmount(info.amount);
     }
 
@@ -170,7 +164,7 @@ contract LOVE20ExtensionStakeLp is
         override(ILOVE20ExtensionAutoScore, LOVE20ExtensionAutoScore)
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
-        uint256 totalTokenSupply = _stakeToken.totalSupply();
+        uint256 totalTokenSupply = _joinToken.totalSupply();
         uint256 totalGovVotes = _stake.govVotesNum(tokenAddress);
 
         if (totalTokenSupply == 0 || totalGovVotes == 0) {
@@ -180,10 +174,10 @@ contract LOVE20ExtensionStakeLp is
         scoresCalculated = new uint256[](_accounts.length);
         for (uint256 i = 0; i < _accounts.length; i++) {
             address account = _accounts[i];
-            uint256 stakedAmount = _stakeInfo[account].amount;
+            uint256 joinedAmount = _joinInfo[account].amount;
             uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
 
-            uint256 tokenRatio = (stakedAmount * 1000000) / totalTokenSupply;
+            uint256 tokenRatio = (joinedAmount * 1000000) / totalTokenSupply;
 
             uint256 govVotesRatio = (govVotes * 1000000 * govRatioMultiplier) /
                 totalGovVotes;
