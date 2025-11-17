@@ -26,10 +26,7 @@ import {
     IUniswapV2Pair
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
-contract LOVE20ExtensionLp is
-    LOVE20ExtensionAutoScoreJoin,
-    ILOVE20ExtensionLp
-{
+contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     // ============================================
     // STATE VARIABLES
     // ============================================
