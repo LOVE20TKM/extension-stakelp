@@ -673,4 +673,66 @@ contract LOVE20ExtensionLpTest is Test {
     function test_ImmutableVariables_LpRatioPrecision() public view {
         assertEq(extension.lpRatioPrecision(), LP_RATIO_PRECISION);
     }
+
+    // ============================================
+    // Min Gov Votes Tests (LP-specific)
+    // ============================================
+
+    function test_Join_RevertIfInsufficientGovVotes() public {
+        // Create a user with insufficient gov votes
+        address poorUser = address(0x999);
+        joinToken.mint(poorUser, 1000e18);
+        vm.prank(poorUser);
+        joinToken.approve(address(extension), type(uint256).max);
+
+        // Set gov votes below MIN_GOV_VOTES (1e18)
+        stake.setValidGovVotes(address(token), poorUser, MIN_GOV_VOTES - 1);
+
+        // Try to join should fail
+        vm.prank(poorUser);
+        vm.expectRevert(ILOVE20ExtensionLp.InsufficientGovVotes.selector);
+        extension.join(100e18, new string[](0));
+    }
+
+    function test_Join_SucceedWithExactMinGovVotes() public {
+        // Create a user with exactly MIN_GOV_VOTES
+        address minUser = address(0x888);
+        joinToken.mint(minUser, 1000e18);
+        vm.prank(minUser);
+        joinToken.approve(address(extension), type(uint256).max);
+
+        // Set gov votes exactly at MIN_GOV_VOTES (1e18)
+        stake.setValidGovVotes(address(token), minUser, MIN_GOV_VOTES);
+
+        // Join should succeed
+        vm.prank(minUser);
+        extension.join(100e18, new string[](0));
+
+        // Verify join succeeded
+        (uint256 amount, ) = extension.joinInfo(minUser);
+        assertEq(amount, 100e18);
+    }
+
+    function test_Join_SucceedWithMoreThanMinGovVotes() public {
+        // Create a user with more than MIN_GOV_VOTES
+        address richUser = address(0x777);
+        joinToken.mint(richUser, 1000e18);
+        vm.prank(richUser);
+        joinToken.approve(address(extension), type(uint256).max);
+
+        // Set gov votes higher than MIN_GOV_VOTES
+        stake.setValidGovVotes(address(token), richUser, MIN_GOV_VOTES * 10);
+
+        // Join should succeed
+        vm.prank(richUser);
+        extension.join(100e18, new string[](0));
+
+        // Verify join succeeded
+        (uint256 amount, ) = extension.joinInfo(richUser);
+        assertEq(amount, 100e18);
+    }
+
+    function test_ImmutableVariables_MinGovVotes() public view {
+        assertEq(extension.minGovVotes(), MIN_GOV_VOTES);
+    }
 }
