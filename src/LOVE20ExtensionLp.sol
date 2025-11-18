@@ -33,6 +33,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
 
     uint256 public immutable govRatioMultiplier;
     uint256 public immutable lpRatioPrecision;
+    uint256 public immutable minGovVotes;
 
     constructor(
         address factory_,
@@ -45,11 +46,11 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
         LOVE20ExtensionAutoScoreJoin(
             factory_,
             joinTokenAddress_,
-            waitingBlocks_,
-            minGovVotes_
+            waitingBlocks_
         )
     {
         govRatioMultiplier = govRatioMultiplier_;
+        minGovVotes = minGovVotes_;
         lpRatioPrecision = lpRatioPrecision_;
     }
 
@@ -69,6 +70,12 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
         virtual
         override(ILOVE20ExtensionAutoScoreJoin, LOVE20ExtensionAutoScoreJoin)
     {
+        // Check minimum governance votes requirement
+        uint256 userGovVotes = _stake.validGovVotes(tokenAddress, msg.sender);
+        if (userGovVotes < minGovVotes) {
+            revert ILOVE20ExtensionLp.InsufficientGovVotes();
+        }
+
         // Validate LP ratio before joining
         if (lpRatioPrecision > 0) {
             uint256 totalLpSupply = _joinToken.totalSupply();

@@ -9,10 +9,12 @@ interface ILOVE20ExtensionLp is ILOVE20ExtensionAutoScoreJoin {
     // Lp-specific errors (join-related errors are in ILOVE20ExtensionAutoScoreJoin)
     error InvalidJoinTokenAddress();
     error InsufficientLpRatio();
+    error InsufficientGovVotes();
 
     // Join-related events and functions are inherited from ILOVE20ExtensionAutoScoreJoin
 
     // Lp-specific config
     function govRatioMultiplier() external view returns (uint256);
     function lpRatioPrecision() external view returns (uint256);
+    function minGovVotes() external view returns (uint256);
 }
