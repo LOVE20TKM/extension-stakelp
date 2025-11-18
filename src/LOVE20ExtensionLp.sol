@@ -174,9 +174,9 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
             uint256 joinedAmount = _joinInfo[account].amount;
             uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
 
-            uint256 tokenRatio = (joinedAmount * 1000000) / totalTokenSupply;
+            uint256 tokenRatio = (joinedAmount * 1e18) / totalTokenSupply;
 
-            uint256 govVotesRatio = (govVotes * 1000000 * govRatioMultiplier) /
+            uint256 govVotesRatio = (govVotes * 1e18 * govRatioMultiplier) /
                 totalGovVotes;
 
             uint256 score = tokenRatio > govVotesRatio

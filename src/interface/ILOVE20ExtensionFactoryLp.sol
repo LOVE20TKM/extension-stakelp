@@ -18,7 +18,6 @@ interface ILOVE20ExtensionFactoryLp is ILOVE20ExtensionFactory {
     // ERRORS
     // ============================================
 
-    error InvalidTokenAddress();
     error InvalidJoinTokenAddress();
 
     // ============================================
