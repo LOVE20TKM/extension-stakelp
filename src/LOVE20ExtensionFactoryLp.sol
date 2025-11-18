@@ -33,7 +33,8 @@ contract LOVE20ExtensionFactoryLp is
         address joinTokenAddress,
         uint256 waitingBlocks,
         uint256 govRatioMultiplier,
-        uint256 minGovVotes
+        uint256 minGovVotes,
+        uint256 lpRatioPrecision
     ) external returns (address extension) {
         // Validate parameters
         if (joinTokenAddress == address(0)) {
@@ -46,7 +47,8 @@ contract LOVE20ExtensionFactoryLp is
                 joinTokenAddress,
                 waitingBlocks,
                 govRatioMultiplier,
-                minGovVotes
+                minGovVotes,
+                lpRatioPrecision
             )
         );
 
@@ -55,7 +57,8 @@ contract LOVE20ExtensionFactoryLp is
             joinTokenAddress: joinTokenAddress,
             waitingBlocks: waitingBlocks,
             govRatioMultiplier: govRatioMultiplier,
-            minGovVotes: minGovVotes
+            minGovVotes: minGovVotes,
+            lpRatioPrecision: lpRatioPrecision
         });
 
         // Register extension in base contract
@@ -66,7 +69,8 @@ contract LOVE20ExtensionFactoryLp is
             joinTokenAddress,
             waitingBlocks,
             govRatioMultiplier,
-            minGovVotes
+            minGovVotes,
+            lpRatioPrecision
         );
 
         return extension;
@@ -82,7 +86,8 @@ contract LOVE20ExtensionFactoryLp is
             address joinTokenAddress,
             uint256 waitingBlocks,
             uint256 govRatioMultiplier,
-            uint256 minGovVotes
+            uint256 minGovVotes,
+            uint256 lpRatioPrecision
         )
     {
         ExtensionParams memory params = _extensionParams[extension];
@@ -90,7 +95,8 @@ contract LOVE20ExtensionFactoryLp is
             params.joinTokenAddress,
             params.waitingBlocks,
             params.govRatioMultiplier,
-            params.minGovVotes
+            params.minGovVotes,
+            params.lpRatioPrecision
         );
     }
 }

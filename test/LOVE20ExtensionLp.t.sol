@@ -3,12 +3,8 @@ pragma solidity =0.8.17;
 
 import {Test, console} from "forge-std/Test.sol";
 import {LOVE20ExtensionLp} from "../src/LOVE20ExtensionLp.sol";
-import {
-    LOVE20ExtensionFactoryLp
-} from "../src/LOVE20ExtensionFactoryLp.sol";
-import {
-    ILOVE20ExtensionLp
-} from "../src/interface/ILOVE20ExtensionLp.sol";
+import {LOVE20ExtensionFactoryLp} from "../src/LOVE20ExtensionFactoryLp.sol";
+import {ILOVE20ExtensionLp} from "../src/interface/ILOVE20ExtensionLp.sol";
 import {
     ILOVE20ExtensionAutoScoreJoin
 } from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
@@ -73,6 +69,7 @@ contract LOVE20ExtensionLpTest is Test {
     uint256 constant WAITING_BLOCKS = 7;
     uint256 constant GOV_RATIO_MULTIPLIER = 2;
     uint256 constant MIN_GOV_VOTES = 1e18;
+    uint256 constant LP_RATIO_PRECISION = 1000; // 0.1% minimum LP ratio
 
     function setUp() public {
         // Deploy mock contracts
@@ -114,7 +111,8 @@ contract LOVE20ExtensionLpTest is Test {
                 address(joinToken),
                 WAITING_BLOCKS,
                 GOV_RATIO_MULTIPLIER,
-                MIN_GOV_VOTES
+                MIN_GOV_VOTES,
+                LP_RATIO_PRECISION
             )
         );
 
@@ -177,7 +175,8 @@ contract LOVE20ExtensionLpTest is Test {
             address(invalidStakeToken),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
 
         // Set action info for the new action ID
@@ -216,7 +215,8 @@ contract LOVE20ExtensionLpTest is Test {
             address(wrongPair),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
 
         // Set action info for the new action ID
@@ -334,12 +334,12 @@ contract LOVE20ExtensionLpTest is Test {
         // Expected calculation:
         // Total LP: 1600e18 (1000e18 in pair + 100e18 user1 + 200e18 user2 + 300e18 user3)
         // User LP: 100e18
-        // LP ratio: (100e18 * 1000000) / 1600e18 = 62500
+        // LP ratio (with lpRatioPrecision): (100e18 * 1000) / 1600e18 = 62.5 (rounded down to 62)
         // Total gov votes: 1000e18, User gov votes: 100e18
-        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
-        // Score: min(62500, 200000) = 62500
-        assertEq(scores[0], 62500, "Score should be 62500");
-        assertEq(totalScore, 62500, "Total score should be 62500");
+        // Gov ratio (with lpRatioPrecision): (100e18 * 1000 * 2) / 1000e18 = 200
+        // Score: min(62, 200) = 62
+        assertEq(scores[0], 62, "Score should be 62");
+        assertEq(totalScore, 62, "Total score should be 62");
     }
 
     function test_CalculateScores_DirectCall_MultipleUsers() public {
@@ -361,14 +361,14 @@ contract LOVE20ExtensionLpTest is Test {
         assertEq(scores.length, 3, "Should have 3 scores");
         assertTrue(totalScore > 0, "Total score should be greater than 0");
 
-        // Expected calculations (Total LP: 1600e18):
-        // User1: lpRatio = 62500, govRatio = 100000, score = 62500
-        // User2: lpRatio = 125000, govRatio = 200000, score = 125000
-        // User3: lpRatio = 187500, govRatio = 300000, score = 187500
-        assertEq(scores[0], 62500, "User1 score should be 62500");
-        assertEq(scores[1], 125000, "User2 score should be 125000");
-        assertEq(scores[2], 187500, "User3 score should be 187500");
-        assertEq(totalScore, 375000, "Total score should be sum of all scores");
+        // Expected calculations (Total LP: 1600e18, LP_RATIO_PRECISION = 1000):
+        // User1: lpRatio = (100e18 * 1000) / 1600e18 = 62, govRatio = (100e18 * 1000 * 2) / 1000e18 = 200, score = 62
+        // User2: lpRatio = (200e18 * 1000) / 1600e18 = 125, govRatio = (200e18 * 1000 * 2) / 1000e18 = 400, score = 125
+        // User3: lpRatio = (300e18 * 1000) / 1600e18 = 187, govRatio = (300e18 * 1000 * 2) / 1000e18 = 600, score = 187
+        assertEq(scores[0], 62, "User1 score should be 62");
+        assertEq(scores[1], 125, "User2 score should be 125");
+        assertEq(scores[2], 187, "User3 score should be 187");
+        assertEq(totalScore, 374, "Total score should be sum of all scores");
     }
 
     function test_CalculateScores_LpRatioIsLimiting() public {
@@ -376,17 +376,17 @@ contract LOVE20ExtensionLpTest is Test {
         vm.prank(user1);
         extension.join(50e18, new string[](0));
 
-        // Total LP: 1600e18, User LP: 50e18
-        // LP ratio: (50e18 * 1000000) / 1600e18 = 31250
+        // Total LP: 1600e18, User LP: 50e18, LP_RATIO_PRECISION = 1000
+        // LP ratio: (50e18 * 1000) / 1600e18 = 31.25 (rounded down to 31)
         // User1 has 100e18 gov votes (10% of 1000e18 total)
-        // Gov ratio: (100e18 * 1000000 * 2) / 1000e18 = 200000
-        // Score should be limited by LP ratio (min) = 31250
+        // Gov ratio: (100e18 * 1000 * 2) / 1000e18 = 200
+        // Score should be limited by LP ratio (min) = 31
 
         (, uint256[] memory scores) = extension.calculateScores();
 
         assertEq(scores.length, 1, "Should have 1 score");
         // Score should be limited by LP ratio
-        assertEq(scores[0], 31250, "Score should be limited by LP ratio");
+        assertEq(scores[0], 31, "Score should be limited by LP ratio");
     }
 
     function test_CalculateScore_DirectCall_ExistingAccount() public {
@@ -403,11 +403,11 @@ contract LOVE20ExtensionLpTest is Test {
         // Verify results
         assertTrue(total > 0, "Total should be greater than 0");
         assertTrue(score > 0, "Score should be greater than 0");
-        // User1: lpRatio = 62500, govRatio = 100000, score = 62500
-        // User2: lpRatio = 125000, govRatio = 200000, score = 125000
-        // Total: 187500
-        assertEq(score, 62500, "User1 score should be 62500");
-        assertEq(total, 187500, "Total score should be 187500");
+        // User1: lpRatio = 62, govRatio = 200, score = 62
+        // User2: lpRatio = 125, govRatio = 400, score = 125
+        // Total: 187
+        assertEq(score, 62, "User1 score should be 62");
+        assertEq(total, 187, "Total score should be 187");
     }
 
     function test_CalculateScore_DirectCall_NonExistentAccount() public {
@@ -424,7 +424,7 @@ contract LOVE20ExtensionLpTest is Test {
         // Verify results
         assertTrue(total > 0, "Total should be greater than 0");
         assertEq(score, 0, "Score for non-existent account should be 0");
-        assertEq(total, 187500, "Total should still be calculated");
+        assertEq(total, 187, "Total should still be calculated");
     }
 
     function test_CalculateScore_DirectCall_MultipleUsers() public {
@@ -440,16 +440,16 @@ contract LOVE20ExtensionLpTest is Test {
 
         // Test each user's score
         (uint256 total1, uint256 score1) = extension.calculateScore(user1);
-        assertEq(score1, 62500, "User1 score should be 62500");
-        assertEq(total1, 375000, "Total should be 375000");
+        assertEq(score1, 62, "User1 score should be 62");
+        assertEq(total1, 374, "Total should be 374");
 
         (uint256 total2, uint256 score2) = extension.calculateScore(user2);
-        assertEq(score2, 125000, "User2 score should be 125000");
-        assertEq(total2, 375000, "Total should be 375000");
+        assertEq(score2, 125, "User2 score should be 125");
+        assertEq(total2, 374, "Total should be 374");
 
         (uint256 total3, uint256 score3) = extension.calculateScore(user3);
-        assertEq(score3, 187500, "User3 score should be 187500");
-        assertEq(total3, 375000, "Total should be 375000");
+        assertEq(score3, 187, "User3 score should be 187");
+        assertEq(total3, 374, "Total should be 374");
 
         // Verify sum
         assertEq(
@@ -502,7 +502,8 @@ contract LOVE20ExtensionLpTest is Test {
             address(joinToken),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
 
         assertTrue(factory.exists(newExtension));
@@ -516,7 +517,8 @@ contract LOVE20ExtensionLpTest is Test {
             address(joinToken2),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
 
         address[] memory exts = factory.extensions();
@@ -532,7 +534,8 @@ contract LOVE20ExtensionLpTest is Test {
             address(joinToken2),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
 
         assertEq(factory.extensionsAtIndex(0), address(extension));
@@ -545,17 +548,19 @@ contract LOVE20ExtensionLpTest is Test {
             address joinTokenAddr,
             uint256 waitingBlocks,
             uint256 govRatioMult,
-            uint256 minGovVotesVal
+            uint256 minGovVotesVal,
+            uint256 lpRatioPrecision
         ) = factory.extensionParams(address(extension));
 
-        assertEq(
-            joinTokenAddr,
-            address(joinToken),
-            "joinTokenAddr mismatch"
-        );
+        assertEq(joinTokenAddr, address(joinToken), "joinTokenAddr mismatch");
         assertEq(waitingBlocks, WAITING_BLOCKS, "waitingBlocks mismatch");
         assertEq(govRatioMult, GOV_RATIO_MULTIPLIER, "govRatioMult mismatch");
         assertEq(minGovVotesVal, MIN_GOV_VOTES, "minGovVotesVal mismatch");
+        assertEq(
+            lpRatioPrecision,
+            LP_RATIO_PRECISION,
+            "lpRatioPrecision mismatch"
+        );
 
         // tokenAddress and actionId are now stored in extension itself after initialization
         assertEq(
@@ -572,7 +577,8 @@ contract LOVE20ExtensionLpTest is Test {
             address joinTokenAddr,
             uint256 waitingBlocks,
             uint256 govRatioMult,
-            uint256 minGovVotesVal
+            uint256 minGovVotesVal,
+            uint256 lpRatioPrecision
         ) = factory.extensionParams(address(0x999));
 
         // Should return zero values
@@ -580,6 +586,7 @@ contract LOVE20ExtensionLpTest is Test {
         assertEq(waitingBlocks, 0);
         assertEq(govRatioMult, 0);
         assertEq(minGovVotesVal, 0);
+        assertEq(lpRatioPrecision, 0);
     }
 
     function test_Factory_Center() public view {
@@ -594,7 +601,76 @@ contract LOVE20ExtensionLpTest is Test {
             address(0),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
-            MIN_GOV_VOTES
+            MIN_GOV_VOTES,
+            LP_RATIO_PRECISION
         );
+    }
+
+    // ============================================
+    // LP Ratio Precision Tests
+    // ============================================
+
+    function test_Join_RevertIfInsufficientLpRatio() public {
+        // LP_RATIO_PRECISION = 1000 means minimum ratio is 1/1000 = 0.1%
+        // Total LP supply = 1600e18
+        // Minimum required LP = 1600e18 / 1000 = 1.6e18
+        // Try to join with less than minimum
+
+        // user1 tries to join with 1e18 (less than 1.6e18)
+        vm.prank(user1);
+        vm.expectRevert(ILOVE20ExtensionLp.InsufficientLpRatio.selector);
+        extension.join(1e18, new string[](0));
+    }
+
+    function test_Join_SucceedWithSufficientLpRatio() public {
+        // LP_RATIO_PRECISION = 1000 means minimum ratio is 1/1000 = 0.1%
+        // Total LP supply = 1600e18
+        // Minimum required LP = 1600e18 / 1000 = 1.6e18
+
+        // user1 joins with exactly 1.6e18 (should succeed)
+        uint256 minRequired = (joinToken.totalSupply() +
+            LP_RATIO_PRECISION -
+            1) / LP_RATIO_PRECISION;
+        vm.prank(user1);
+        extension.join(minRequired, new string[](0));
+
+        // Verify join succeeded
+        assertEq(extension.totalJoinedAmount(), minRequired);
+    }
+
+    function test_Join_NoRestrictionWhenLpRatioPrecisionIsZero() public {
+        // Create an extension with lpRatioPrecision = 0 (no restriction)
+        address newExtensionAddr = factory.createExtension(
+            address(joinToken),
+            WAITING_BLOCKS,
+            GOV_RATIO_MULTIPLIER,
+            MIN_GOV_VOTES,
+            0 // No LP ratio restriction
+        );
+
+        // Initialize the extension
+        submit.setActionInfo(address(token), ACTION_ID + 100, newExtensionAddr);
+        center.initializeExtension(
+            newExtensionAddr,
+            address(token),
+            ACTION_ID + 100
+        );
+
+        LOVE20ExtensionLp newExtension = LOVE20ExtensionLp(newExtensionAddr);
+
+        // Approve
+        vm.prank(user1);
+        joinToken.approve(address(newExtension), type(uint256).max);
+
+        // user1 can join with any amount, even very small
+        vm.prank(user1);
+        newExtension.join(1, new string[](0)); // Join with just 1 wei
+
+        // Verify join succeeded
+        assertEq(newExtension.totalJoinedAmount(), 1);
+    }
+
+    function test_ImmutableVariables_LpRatioPrecision() public view {
+        assertEq(extension.lpRatioPrecision(), LP_RATIO_PRECISION);
     }
 }

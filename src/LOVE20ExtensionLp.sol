@@ -32,13 +32,15 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     // ============================================
 
     uint256 public immutable govRatioMultiplier;
+    uint256 public immutable lpRatioPrecision;
 
     constructor(
         address factory_,
         address joinTokenAddress_,
         uint256 waitingBlocks_,
         uint256 govRatioMultiplier_,
-        uint256 minGovVotes_
+        uint256 minGovVotes_,
+        uint256 lpRatioPrecision_
     )
         LOVE20ExtensionAutoScoreJoin(
             factory_,
@@ -48,6 +50,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
         )
     {
         govRatioMultiplier = govRatioMultiplier_;
+        lpRatioPrecision = lpRatioPrecision_;
     }
 
     function initialize(
@@ -56,6 +59,29 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     ) public override(ILOVE20Extension, LOVE20ExtensionBase) {
         super.initialize(tokenAddress_, actionId_);
         _validateJoinToken();
+    }
+
+    function join(
+        uint256 amount,
+        string[] memory verificationInfos
+    )
+        public
+        virtual
+        override(ILOVE20ExtensionAutoScoreJoin, LOVE20ExtensionAutoScoreJoin)
+    {
+        // Validate LP ratio before joining
+        if (lpRatioPrecision > 0) {
+            uint256 totalLpSupply = _joinToken.totalSupply();
+            if (totalLpSupply > 0) {
+                uint256 lpRatio = (amount * lpRatioPrecision) / totalLpSupply;
+                if (lpRatio < 1) {
+                    revert ILOVE20ExtensionLp.InsufficientLpRatio();
+                }
+            }
+        }
+
+        // Call parent join function
+        super.join(amount, verificationInfos);
     }
 
     function _validateJoinToken() internal view {
@@ -174,14 +200,15 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
             uint256 joinedAmount = _joinInfo[account].amount;
             uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
 
-            uint256 tokenRatio = (joinedAmount * 1e18) / totalTokenSupply;
+            uint256 score = (joinedAmount * lpRatioPrecision) /
+                totalTokenSupply;
+            if (govRatioMultiplier > 0) {
+                uint256 govVotesRatio = (govVotes *
+                    lpRatioPrecision *
+                    govRatioMultiplier) / totalGovVotes;
 
-            uint256 govVotesRatio = (govVotes * 1e18 * govRatioMultiplier) /
-                totalGovVotes;
-
-            uint256 score = tokenRatio > govVotesRatio
-                ? govVotesRatio
-                : tokenRatio;
+                score = score > govVotesRatio ? govVotesRatio : score;
+            }
 
             scoresCalculated[i] = score;
             totalCalculated += score;
