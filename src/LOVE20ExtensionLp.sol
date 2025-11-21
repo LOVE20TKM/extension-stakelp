@@ -3,8 +3,8 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionLp} from "./interface/ILOVE20ExtensionLp.sol";
 import {
-    LOVE20ExtensionTokenJoinAutoBase
-} from "@extension/src/LOVE20ExtensionTokenJoinAutoBase.sol";
+    LOVE20ExtensionBaseTokenJoinAuto
+} from "@extension/src/LOVE20ExtensionBaseTokenJoinAuto.sol";
 import {TokenJoin} from "@extension/src/base/TokenJoin.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
 import {
@@ -25,7 +25,7 @@ import {
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
 contract LOVE20ExtensionLp is
-    LOVE20ExtensionTokenJoinAutoBase,
+    LOVE20ExtensionBaseTokenJoinAuto,
     ILOVE20ExtensionLp
 {
     // ============================================
@@ -44,7 +44,7 @@ contract LOVE20ExtensionLp is
         uint256 minGovVotes_,
         uint256 lpRatioPrecision_
     )
-        LOVE20ExtensionTokenJoinAutoBase(
+        LOVE20ExtensionBaseTokenJoinAuto(
             factory_,
             joinTokenAddress_,
             waitingBlocks_
@@ -66,7 +66,7 @@ contract LOVE20ExtensionLp is
     function join(
         uint256 amount,
         string[] memory verificationInfos
-    ) public virtual override(ITokenJoin, LOVE20ExtensionTokenJoinAutoBase) {
+    ) public virtual override(ITokenJoin, LOVE20ExtensionBaseTokenJoinAuto) {
         // Check minimum governance votes requirement
         uint256 userGovVotes = _stake.validGovVotes(tokenAddress, msg.sender);
         if (userGovVotes < minGovVotes) {
@@ -172,7 +172,7 @@ contract LOVE20ExtensionLp is
         view
         override(
             ILOVE20ExtensionTokenJoinAuto,
-            LOVE20ExtensionTokenJoinAutoBase
+            LOVE20ExtensionBaseTokenJoinAuto
         )
         returns (uint256 total, uint256 score)
     {
@@ -193,7 +193,7 @@ contract LOVE20ExtensionLp is
         view
         override(
             ILOVE20ExtensionTokenJoinAuto,
-            LOVE20ExtensionTokenJoinAutoBase
+            LOVE20ExtensionBaseTokenJoinAuto
         )
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
