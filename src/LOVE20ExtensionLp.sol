@@ -16,6 +16,8 @@ import {
     ILOVE20ExtensionAutoScore
 } from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
+import {IExtensionCore} from "@extension/src/interface/base/IExtensionCore.sol";
+import {ExtensionCore} from "@extension/src/base/ExtensionCore.sol";
 import {
     ILOVE20ExtensionCenter
 } from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
@@ -57,7 +59,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     function initialize(
         address tokenAddress_,
         uint256 actionId_
-    ) public override(ILOVE20Extension, LOVE20ExtensionBase) {
+    ) public override(IExtensionCore, ExtensionCore) {
         super.initialize(tokenAddress_, actionId_);
         _validateJoinToken();
     }
