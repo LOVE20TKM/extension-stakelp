@@ -6,8 +6,8 @@ import {LOVE20ExtensionLp} from "../src/LOVE20ExtensionLp.sol";
 import {LOVE20ExtensionFactoryLp} from "../src/LOVE20ExtensionFactoryLp.sol";
 import {ILOVE20ExtensionLp} from "../src/interface/ILOVE20ExtensionLp.sol";
 import {
-    ILOVE20ExtensionAutoScoreJoin
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
+    ILOVE20ExtensionTokenJoinAuto
+} from "@extension/src/interface/ILOVE20ExtensionTokenJoinAuto.sol";
 import {
     ILOVE20ExtensionFactoryLp
 } from "../src/interface/ILOVE20ExtensionFactoryLp.sol";

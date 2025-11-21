@@ -3,20 +3,16 @@ pragma solidity =0.8.17;
 
 import {ILOVE20ExtensionLp} from "./interface/ILOVE20ExtensionLp.sol";
 import {
-    LOVE20ExtensionAutoScoreJoin
-} from "@extension/src/LOVE20ExtensionAutoScoreJoin.sol";
-import {
-    LOVE20ExtensionAutoScore
-} from "@extension/src/LOVE20ExtensionAutoScore.sol";
+    LOVE20ExtensionTokenJoinAutoBase
+} from "@extension/src/LOVE20ExtensionTokenJoinAutoBase.sol";
+import {TokenJoin} from "@extension/src/base/TokenJoin.sol";
 import {LOVE20ExtensionBase} from "@extension/src/LOVE20ExtensionBase.sol";
 import {
-    ILOVE20ExtensionAutoScoreJoin
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
-import {
-    ILOVE20ExtensionAutoScore
-} from "@extension/src/interface/ILOVE20ExtensionAutoScore.sol";
+    ILOVE20ExtensionTokenJoinAuto
+} from "@extension/src/interface/ILOVE20ExtensionTokenJoinAuto.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
 import {IExtensionCore} from "@extension/src/interface/base/IExtensionCore.sol";
+import {ITokenJoin} from "@extension/src/interface/base/ITokenJoin.sol";
 import {ExtensionCore} from "@extension/src/base/ExtensionCore.sol";
 import {
     ILOVE20ExtensionCenter
@@ -28,7 +24,10 @@ import {
     IUniswapV2Pair
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
 
-contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
+contract LOVE20ExtensionLp is
+    LOVE20ExtensionTokenJoinAutoBase,
+    ILOVE20ExtensionLp
+{
     // ============================================
     // STATE VARIABLES
     // ============================================
@@ -45,7 +44,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
         uint256 minGovVotes_,
         uint256 lpRatioPrecision_
     )
-        LOVE20ExtensionAutoScoreJoin(
+        LOVE20ExtensionTokenJoinAutoBase(
             factory_,
             joinTokenAddress_,
             waitingBlocks_
@@ -67,11 +66,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     function join(
         uint256 amount,
         string[] memory verificationInfos
-    )
-        public
-        virtual
-        override(ILOVE20ExtensionAutoScoreJoin, LOVE20ExtensionAutoScoreJoin)
-    {
+    ) public virtual override(ITokenJoin, LOVE20ExtensionTokenJoinAutoBase) {
         // Check minimum governance votes requirement
         uint256 userGovVotes = _stake.validGovVotes(tokenAddress, msg.sender);
         if (userGovVotes < minGovVotes) {
@@ -162,7 +157,7 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     function joinedValueByAccount(
         address account
     ) external view returns (uint256) {
-        ILOVE20ExtensionAutoScoreJoin.JoinInfo memory info = _joinInfo[account];
+        ILOVE20ExtensionTokenJoinAuto.JoinInfo memory info = _joinInfo[account];
         return _lpToTokenAmount(info.amount);
     }
 
@@ -175,7 +170,10 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     )
         public
         view
-        override(ILOVE20ExtensionAutoScore, LOVE20ExtensionAutoScore)
+        override(
+            ILOVE20ExtensionTokenJoinAuto,
+            LOVE20ExtensionTokenJoinAutoBase
+        )
         returns (uint256 total, uint256 score)
     {
         uint256[] memory scoresCalculated;
@@ -193,7 +191,10 @@ contract LOVE20ExtensionLp is LOVE20ExtensionAutoScoreJoin, ILOVE20ExtensionLp {
     function calculateScores()
         public
         view
-        override(ILOVE20ExtensionAutoScore, LOVE20ExtensionAutoScore)
+        override(
+            ILOVE20ExtensionTokenJoinAuto,
+            LOVE20ExtensionTokenJoinAutoBase
+        )
         returns (uint256 totalCalculated, uint256[] memory scoresCalculated)
     {
         uint256 totalTokenSupply = _joinToken.totalSupply();

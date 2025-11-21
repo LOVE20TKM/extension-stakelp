@@ -2,10 +2,10 @@
 pragma solidity =0.8.17;
 
 import {
-    ILOVE20ExtensionAutoScoreJoin
-} from "@extension/src/interface/ILOVE20ExtensionAutoScoreJoin.sol";
+    ILOVE20ExtensionTokenJoinAuto
+} from "@extension/src/interface/ILOVE20ExtensionTokenJoinAuto.sol";
 
-interface ILOVE20ExtensionLp is ILOVE20ExtensionAutoScoreJoin {
+interface ILOVE20ExtensionLp is ILOVE20ExtensionTokenJoinAuto {
     // Lp-specific errors (join-related errors are in ILOVE20ExtensionAutoScoreJoin)
     error InvalidJoinTokenAddress();
     error InsufficientLpRatio();
