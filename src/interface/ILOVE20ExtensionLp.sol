@@ -6,8 +6,7 @@ import {
 } from "@extension/src/interface/ILOVE20ExtensionTokenJoinAuto.sol";
 
 interface ILOVE20ExtensionLp is ILOVE20ExtensionTokenJoinAuto {
-    // Lp-specific errors (join-related errors are in ILOVE20ExtensionAutoScoreJoin)
-    error InvalidJoinTokenAddress();
+    // Lp-specific errors (InvalidJoinTokenAddress is inherited from ITokenJoin)
     error InsufficientLpRatio();
     error InsufficientGovVotes();
 

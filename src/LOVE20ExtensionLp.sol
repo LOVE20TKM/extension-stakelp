@@ -23,11 +23,15 @@ import {
 import {
     IUniswapV2Pair
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
+import {
+    EnumerableSet
+} from "@extension/lib/core/lib/openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 contract LOVE20ExtensionLp is
     LOVE20ExtensionBaseTokenJoinAuto,
     ILOVE20ExtensionLp
 {
+    using EnumerableSet for EnumerableSet.AddressSet;
     // ============================================
     // STATE VARIABLES
     // ============================================
@@ -96,25 +100,25 @@ contract LOVE20ExtensionLp is
             address pairFactory
         ) {
             if (pairFactory != uniswapV2FactoryAddress) {
-                revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
+                revert ITokenJoin.InvalidJoinTokenAddress();
             }
         } catch {
-            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
+            revert ITokenJoin.InvalidJoinTokenAddress();
         }
         address pairToken0;
         address pairToken1;
         try IUniswapV2Pair(joinTokenAddress).token0() returns (address token0) {
             pairToken0 = token0;
         } catch {
-            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
+            revert ITokenJoin.InvalidJoinTokenAddress();
         }
         try IUniswapV2Pair(joinTokenAddress).token1() returns (address token1) {
             pairToken1 = token1;
         } catch {
-            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
+            revert ITokenJoin.InvalidJoinTokenAddress();
         }
         if (pairToken0 != tokenAddress && pairToken1 != tokenAddress) {
-            revert ILOVE20ExtensionLp.InvalidJoinTokenAddress();
+            revert ITokenJoin.InvalidJoinTokenAddress();
         }
     }
 
@@ -180,7 +184,7 @@ contract LOVE20ExtensionLp is
         (total, scoresCalculated) = calculateScores();
         score = 0;
         for (uint256 i = 0; i < scoresCalculated.length; i++) {
-            if (_accounts[i] == account) {
+            if (_accounts.at(i) == account) {
                 score = scoresCalculated[i];
                 break;
             }
@@ -204,9 +208,10 @@ contract LOVE20ExtensionLp is
             return (0, new uint256[](0));
         }
 
-        scoresCalculated = new uint256[](_accounts.length);
-        for (uint256 i = 0; i < _accounts.length; i++) {
-            address account = _accounts[i];
+        uint256 accountsLength = _accounts.length();
+        scoresCalculated = new uint256[](accountsLength);
+        for (uint256 i = 0; i < accountsLength; i++) {
+            address account = _accounts.at(i);
             uint256 joinedAmount = _joinInfo[account].amount;
             uint256 govVotes = _stake.validGovVotes(tokenAddress, account);
 
