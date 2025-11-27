@@ -106,6 +106,10 @@ contract LOVE20ExtensionLpTest is Test {
         // Deploy factory
         factory = new LOVE20ExtensionFactoryLp(address(center));
 
+        // Mint and approve tokens for extension creation
+        token.mint(address(this), 1e18);
+        token.approve(address(factory), 1e18);
+
         // Create extension
         extension = LOVE20ExtensionLp(
             factory.createExtension(
@@ -471,6 +475,8 @@ contract LOVE20ExtensionLpTest is Test {
     // ============================================
 
     function test_Factory_CreateExtension() public {
+        token.mint(address(this), 1e18);
+        token.approve(address(factory), 1e18);
         address newExtension = factory.createExtension(
             address(token),
             address(joinToken),
@@ -495,6 +501,8 @@ contract LOVE20ExtensionLpTest is Test {
             uniswapFactory.createPair(address(token), address(otherToken2))
         );
 
+        token.mint(address(this), 1e18);
+        token.approve(address(factory), 1e18);
         address extension2 = factory.createExtension(
             address(token),
             address(joinToken2),
@@ -521,6 +529,8 @@ contract LOVE20ExtensionLpTest is Test {
             uniswapFactory.createPair(address(token), address(otherToken2))
         );
 
+        token.mint(address(this), 1e18);
+        token.approve(address(factory), 1e18);
         address extension2 = factory.createExtension(
             address(token),
             address(joinToken2),
@@ -642,6 +652,8 @@ contract LOVE20ExtensionLpTest is Test {
 
     function test_Join_NoRestrictionWhenLpRatioPrecisionIsZero() public {
         // Create an extension with lpRatioPrecision = 0 (no restriction)
+        token.mint(address(this), 1e18);
+        token.approve(address(factory), 1e18);
         address newExtensionAddr = factory.createExtension(
             address(token),
             address(joinToken),
