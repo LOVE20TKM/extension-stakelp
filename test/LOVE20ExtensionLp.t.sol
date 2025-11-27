@@ -22,6 +22,7 @@ import {LOVE20ExtensionCenter} from "@extension/src/LOVE20ExtensionCenter.sol";
 import {
     IUniswapV2Pair
 } from "@core/uniswap-v2-core/interfaces/IUniswapV2Pair.sol";
+import {ITokenJoin} from "@extension/src/interface/base/ITokenJoin.sol";
 
 // Import mock contracts
 import {MockERC20} from "./mocks/MockERC20.sol";
@@ -108,6 +109,7 @@ contract LOVE20ExtensionLpTest is Test {
         // Create extension
         extension = LOVE20ExtensionLp(
             factory.createExtension(
+                address(token),
                 address(joinToken),
                 WAITING_BLOCKS,
                 GOV_RATIO_MULTIPLIER,
@@ -123,12 +125,8 @@ contract LOVE20ExtensionLpTest is Test {
         // Set action info whiteListAddress to extension address
         submit.setActionInfo(address(token), ACTION_ID, address(extension));
 
-        // Initialize extension through center
-        center.initializeExtension(
-            address(extension),
-            address(token),
-            ACTION_ID
-        );
+        // Set vote mock for auto-initialization
+        vote.setVotedActionIds(address(token), join.currentRound(), ACTION_ID);
 
         // Setup users with join tokens
         joinToken.mint(user1, 100e18);
@@ -171,28 +169,17 @@ contract LOVE20ExtensionLpTest is Test {
         // Deploy new extension with invalid joinToken (not a Pair)
         // Must create through factory to register it
         MockERC20 invalidStakeToken = new MockERC20();
-        address newExtensionAddress = factory.createExtension(
+
+        // Creation should fail because invalidStakeToken is not a Pair
+        // _validateJoinToken is now called in constructor
+        vm.expectRevert(ITokenJoin.InvalidJoinTokenAddress.selector);
+        factory.createExtension(
+            address(token),
             address(invalidStakeToken),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES,
             LP_RATIO_PRECISION
-        );
-
-        // Set action info for the new action ID
-        submit.setActionInfo(
-            address(token),
-            ACTION_ID + 1,
-            newExtensionAddress
-        );
-
-        // Initialize should fail because invalidStakeToken is not a Pair
-        // Center wraps the error in InitializeFailed(), so we check for that
-        vm.expectRevert(ILOVE20ExtensionCenter.InitializeFailed.selector);
-        center.initializeExtension(
-            newExtensionAddress,
-            address(token),
-            ACTION_ID + 1
         );
     }
 
@@ -209,30 +196,16 @@ contract LOVE20ExtensionLpTest is Test {
             uniswapFactory.createPair(address(token1), address(token2))
         );
 
-        // Deploy new extension with wrong Pair (doesn't include token)
-        // Must create through factory to register it
-        address newExtensionAddress = factory.createExtension(
+        // Creation should fail because wrongPair doesn't include token
+        // _validateJoinToken is now called in constructor
+        vm.expectRevert(ITokenJoin.InvalidJoinTokenAddress.selector);
+        factory.createExtension(
+            address(token),
             address(wrongPair),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
             MIN_GOV_VOTES,
             LP_RATIO_PRECISION
-        );
-
-        // Set action info for the new action ID
-        submit.setActionInfo(
-            address(token),
-            ACTION_ID + 1,
-            newExtensionAddress
-        );
-
-        // Initialize should fail because wrongPair doesn't include token
-        // Center wraps the error in InitializeFailed(), so we check for that
-        vm.expectRevert(ILOVE20ExtensionCenter.InitializeFailed.selector);
-        center.initializeExtension(
-            newExtensionAddress,
-            address(token),
-            ACTION_ID + 1
         );
     }
 
@@ -499,6 +472,7 @@ contract LOVE20ExtensionLpTest is Test {
 
     function test_Factory_CreateExtension() public {
         address newExtension = factory.createExtension(
+            address(token),
             address(joinToken),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
@@ -511,9 +485,18 @@ contract LOVE20ExtensionLpTest is Test {
     }
 
     function test_Factory_Extensions() public {
-        // Create multiple extensions
-        MockERC20 joinToken2 = new MockERC20();
+        // Create multiple extensions with valid LP pairs
+        MockERC20 otherToken2 = new MockERC20();
+        address uniswapFactoryAddr = center.uniswapV2FactoryAddress();
+        MockUniswapV2Factory uniswapFactory = MockUniswapV2Factory(
+            uniswapFactoryAddr
+        );
+        MockUniswapV2Pair joinToken2 = MockUniswapV2Pair(
+            uniswapFactory.createPair(address(token), address(otherToken2))
+        );
+
         address extension2 = factory.createExtension(
+            address(token),
             address(joinToken2),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
@@ -528,9 +511,18 @@ contract LOVE20ExtensionLpTest is Test {
     }
 
     function test_Factory_ExtensionsAtIndex() public {
-        // Create another extension
-        MockERC20 joinToken2 = new MockERC20();
+        // Create another extension with valid LP pair
+        MockERC20 otherToken2 = new MockERC20();
+        address uniswapFactoryAddr = center.uniswapV2FactoryAddress();
+        MockUniswapV2Factory uniswapFactory = MockUniswapV2Factory(
+            uniswapFactoryAddr
+        );
+        MockUniswapV2Pair joinToken2 = MockUniswapV2Pair(
+            uniswapFactory.createPair(address(token), address(otherToken2))
+        );
+
         address extension2 = factory.createExtension(
+            address(token),
             address(joinToken2),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
@@ -542,9 +534,15 @@ contract LOVE20ExtensionLpTest is Test {
         assertEq(factory.extensionsAtIndex(1), extension2);
     }
 
-    function test_Factory_ExtensionParams() public view {
-        // Extension is already initialized in setUp via center.initializeExtension
+    function test_Factory_ExtensionParams() public {
+        // First trigger auto-initialization by joining
+        vm.prank(user1);
+        joinToken.approve(address(extension), type(uint256).max);
+        vm.prank(user1);
+        extension.join(10e18, new string[](0));
+
         (
+            address tokenAddr,
             address joinTokenAddr,
             uint256 waitingBlocks,
             uint256 govRatioMult,
@@ -552,6 +550,7 @@ contract LOVE20ExtensionLpTest is Test {
             uint256 lpRatioPrecision
         ) = factory.extensionParams(address(extension));
 
+        assertEq(tokenAddr, address(token), "tokenAddr mismatch");
         assertEq(joinTokenAddr, address(joinToken), "joinTokenAddr mismatch");
         assertEq(waitingBlocks, WAITING_BLOCKS, "waitingBlocks mismatch");
         assertEq(govRatioMult, GOV_RATIO_MULTIPLIER, "govRatioMult mismatch");
@@ -574,6 +573,7 @@ contract LOVE20ExtensionLpTest is Test {
     function test_Factory_ExtensionParams_NonExistent() public view {
         // Query params for non-existent extension
         (
+            address tokenAddr,
             address joinTokenAddr,
             uint256 waitingBlocks,
             uint256 govRatioMult,
@@ -582,6 +582,7 @@ contract LOVE20ExtensionLpTest is Test {
         ) = factory.extensionParams(address(0x999));
 
         // Should return zero values
+        assertEq(tokenAddr, address(0));
         assertEq(joinTokenAddr, address(0));
         assertEq(waitingBlocks, 0);
         assertEq(govRatioMult, 0);
@@ -598,6 +599,7 @@ contract LOVE20ExtensionLpTest is Test {
             ILOVE20ExtensionFactoryLp.InvalidJoinTokenAddress.selector
         );
         factory.createExtension(
+            address(token),
             address(0),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
@@ -641,6 +643,7 @@ contract LOVE20ExtensionLpTest is Test {
     function test_Join_NoRestrictionWhenLpRatioPrecisionIsZero() public {
         // Create an extension with lpRatioPrecision = 0 (no restriction)
         address newExtensionAddr = factory.createExtension(
+            address(token),
             address(joinToken),
             WAITING_BLOCKS,
             GOV_RATIO_MULTIPLIER,
@@ -648,13 +651,14 @@ contract LOVE20ExtensionLpTest is Test {
             0 // No LP ratio restriction
         );
 
-        // Initialize the extension
+        // Setup for auto-initialization
         submit.setActionInfo(address(token), ACTION_ID + 100, newExtensionAddr);
-        center.initializeExtension(
-            newExtensionAddr,
+        vote.setVotedActionIds(
             address(token),
+            join.currentRound(),
             ACTION_ID + 100
         );
+        token.mint(newExtensionAddr, 1e18);
 
         LOVE20ExtensionLp newExtension = LOVE20ExtensionLp(newExtensionAddr);
 

@@ -11,9 +11,7 @@ import {
     ILOVE20ExtensionTokenJoinAuto
 } from "@extension/src/interface/ILOVE20ExtensionTokenJoinAuto.sol";
 import {ILOVE20Extension} from "@extension/src/interface/ILOVE20Extension.sol";
-import {IExtensionCore} from "@extension/src/interface/base/IExtensionCore.sol";
 import {ITokenJoin} from "@extension/src/interface/base/ITokenJoin.sol";
-import {ExtensionCore} from "@extension/src/base/ExtensionCore.sol";
 import {
     ILOVE20ExtensionCenter
 } from "@extension/src/interface/ILOVE20ExtensionCenter.sol";
@@ -42,6 +40,7 @@ contract LOVE20ExtensionLp is
 
     constructor(
         address factory_,
+        address tokenAddress_,
         address joinTokenAddress_,
         uint256 waitingBlocks_,
         uint256 govRatioMultiplier_,
@@ -50,6 +49,7 @@ contract LOVE20ExtensionLp is
     )
         LOVE20ExtensionBaseTokenJoinAuto(
             factory_,
+            tokenAddress_,
             joinTokenAddress_,
             waitingBlocks_
         )
@@ -57,13 +57,6 @@ contract LOVE20ExtensionLp is
         govRatioMultiplier = govRatioMultiplier_;
         minGovVotes = minGovVotes_;
         lpRatioPrecision = lpRatioPrecision_;
-    }
-
-    function initialize(
-        address tokenAddress_,
-        uint256 actionId_
-    ) public override(IExtensionCore, ExtensionCore) {
-        super.initialize(tokenAddress_, actionId_);
         _validateJoinToken();
     }
 

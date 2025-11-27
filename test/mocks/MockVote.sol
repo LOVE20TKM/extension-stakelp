@@ -6,6 +6,29 @@ pragma solidity =0.8.17;
  * @dev Mock Vote contract for unit testing
  */
 contract MockVote {
-    // Minimal implementation for LOVE20ExtensionCenter compatibility
-    // No specific methods needed for extension testing
+    // tokenAddress => round => actionIds
+    mapping(address => mapping(uint256 => uint256[])) private _votedActionIds;
+
+    function setVotedActionIds(
+        address tokenAddress,
+        uint256 round,
+        uint256 actionId
+    ) external {
+        _votedActionIds[tokenAddress][round].push(actionId);
+    }
+
+    function votedActionIdsCount(
+        address tokenAddress,
+        uint256 round
+    ) external view returns (uint256) {
+        return _votedActionIds[tokenAddress][round].length;
+    }
+
+    function votedActionIdsAtIndex(
+        address tokenAddress,
+        uint256 round,
+        uint256 index
+    ) external view returns (uint256) {
+        return _votedActionIds[tokenAddress][round][index];
+    }
 }

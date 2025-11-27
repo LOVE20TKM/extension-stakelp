@@ -30,6 +30,7 @@ contract LOVE20ExtensionFactoryLp is
     // Lp FACTORY FUNCTIONS
     // ============================================
     function createExtension(
+        address tokenAddress,
         address joinTokenAddress,
         uint256 waitingBlocks,
         uint256 govRatioMultiplier,
@@ -44,6 +45,7 @@ contract LOVE20ExtensionFactoryLp is
         extension = address(
             new LOVE20ExtensionLp(
                 address(this),
+                tokenAddress,
                 joinTokenAddress,
                 waitingBlocks,
                 govRatioMultiplier,
@@ -54,6 +56,7 @@ contract LOVE20ExtensionFactoryLp is
 
         // Store extension parameters
         _extensionParams[extension] = ExtensionParams({
+            tokenAddress: tokenAddress,
             joinTokenAddress: joinTokenAddress,
             waitingBlocks: waitingBlocks,
             govRatioMultiplier: govRatioMultiplier,
@@ -66,6 +69,7 @@ contract LOVE20ExtensionFactoryLp is
 
         emit ExtensionCreated(
             extension,
+            tokenAddress,
             joinTokenAddress,
             waitingBlocks,
             govRatioMultiplier,
@@ -83,6 +87,7 @@ contract LOVE20ExtensionFactoryLp is
         external
         view
         returns (
+            address tokenAddress,
             address joinTokenAddress,
             uint256 waitingBlocks,
             uint256 govRatioMultiplier,
@@ -92,6 +97,7 @@ contract LOVE20ExtensionFactoryLp is
     {
         ExtensionParams memory params = _extensionParams[extension];
         return (
+            params.tokenAddress,
             params.joinTokenAddress,
             params.waitingBlocks,
             params.govRatioMultiplier,
