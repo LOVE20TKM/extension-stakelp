@@ -8,13 +8,6 @@ import {
     LOVE20ExtensionFactoryBase
 } from "@extension/src/LOVE20ExtensionFactoryBase.sol";
 import {LOVE20ExtensionLp} from "./LOVE20ExtensionLp.sol";
-import {
-    IExtensionCore,
-    DEFAULT_JOIN_AMOUNT
-} from "@extension/src/interface/base/IExtensionCore.sol";
-import {
-    IERC20
-} from "@extension/lib/core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract LOVE20ExtensionFactoryLp is
     LOVE20ExtensionFactoryBase,
@@ -71,15 +64,8 @@ contract LOVE20ExtensionFactoryLp is
             lpRatioPrecision: lpRatioPrecision
         });
 
-        // Register extension in base contract
-        _registerExtension(extension);
-
-        // Transfer tokens from caller to extension for auto-initialization
-        IERC20(tokenAddress).transferFrom(
-            msg.sender,
-            extension,
-            DEFAULT_JOIN_AMOUNT
-        );
+        // Register extension and transfer initial tokens
+        _registerExtension(extension, tokenAddress);
 
         emit ExtensionCreated(
             extension,
